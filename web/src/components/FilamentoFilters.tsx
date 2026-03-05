@@ -19,9 +19,10 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
   const [diametro, setDiametro] = useState("");
   const [famiglia, setFamiglia] = useState("");
   const [prezzoMax, setPrezzoMax] = useState("");
+  const [sortBy, setSortBy] = useState<"prezzo" | "brand" | "tipo">("prezzo");
 
   const filtered = useMemo(() => {
-    return filamenti.filter((f) => {
+    const result = filamenti.filter((f) => {
       if (tipo && f.tipo !== tipo) return false;
       if (brand && f.brand !== brand) return false;
       if (diametro && String(f.diametro_mm) !== diametro) return false;
@@ -37,7 +38,16 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
       }
       return true;
     });
-  }, [filamenti, q, tipo, brand, diametro, famiglia, prezzoMax]);
+    return result.sort((a, b) => {
+      if (sortBy === "prezzo") {
+        const pa = a.prezzo_per_kg_min != null ? Number(a.prezzo_per_kg_min) : Infinity;
+        const pb = b.prezzo_per_kg_min != null ? Number(b.prezzo_per_kg_min) : Infinity;
+        return pa - pb;
+      }
+      if (sortBy === "brand") return `${a.brand}${a.variante}`.localeCompare(`${b.brand}${b.variante}`);
+      return `${a.tipo}${a.variante}`.localeCompare(`${b.tipo}${b.variante}`);
+    });
+  }, [filamenti, q, tipo, brand, diametro, famiglia, prezzoMax, sortBy]);
 
   const selectClass =
     "bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500";
@@ -83,6 +93,11 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           onChange={(e) => setPrezzoMax(e.target.value)}
           className="bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500 w-28"
         />
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={selectClass}>
+          <option value="prezzo">Ordina: €/kg</option>
+          <option value="brand">Ordina: Brand</option>
+          <option value="tipo">Ordina: Tipo</option>
+        </select>
         {(q || tipo || brand || diametro || famiglia || prezzoMax) && (
           <button
             onClick={() => { setQ(""); setTipo(""); setBrand(""); setDiametro(""); setFamiglia(""); setPrezzoMax(""); }}

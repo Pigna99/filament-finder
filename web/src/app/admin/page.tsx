@@ -8,6 +8,7 @@ import VariantiTab from "./components/VariantiTab";
 import FilamentiTab from "./components/FilamentiTab";
 import ShopTab from "./components/ShopTab";
 import PrezziTab from "./components/PrezziTab";
+import TagsTab from "./components/TagsTab";
 import DatabaseTab from "./components/DatabaseTab";
 
 const TABS = [
@@ -17,6 +18,7 @@ const TABS = [
   { key: "filamenti", label: "Filamenti" },
   { key: "shop",      label: "Shop & Link" },
   { key: "prezzi",    label: "Prezzi" },
+  { key: "tags",      label: "Tag" },
   { key: "database",  label: "Database" },
 ] as const;
 
@@ -75,6 +77,7 @@ function AdminDashboard() {
           {tab === "filamenti" && <FilamentiTab secret={secret} />}
           {tab === "shop"      && <ShopTab      secret={secret} />}
           {tab === "prezzi"    && <PrezziTab    secret={secret} />}
+          {tab === "tags"      && <TagsTab      secret={secret} />}
           {tab === "database"  && <DatabaseTab  secret={secret} />}
         </main>
       </div>

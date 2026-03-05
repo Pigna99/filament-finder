@@ -47,8 +47,36 @@ export default async function FilamentoPage({ params }: Props) {
     prezzo_per_kg: p.prezzo_per_kg ? Number(p.prezzo_per_kg) : null,
   }));
 
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${f.brand} ${f.tipo} ${f.variante}${f.colore ? ` ${f.colore}` : ""} ${f.peso_g}g`,
+    description: `Filamento ${f.tipo} di ${f.brand}. Diametro: ${f.diametro_mm}mm.`,
+    brand: { "@type": "Brand", name: f.brand },
+    ...(f.link_immagine ? { image: f.link_immagine } : {}),
+    url: `${base}/filamento/${slug}`,
+    ...(prezziShop.length > 0 ? {
+      offers: {
+        "@type": "AggregateOffer",
+        priceCurrency: "EUR",
+        lowPrice: Number(prezziShop[0].prezzo_finale).toFixed(2),
+        offerCount: prezziShop.length,
+        offers: prezziShop.map((p) => ({
+          "@type": "Offer",
+          seller: { "@type": "Organization", name: p.shop },
+          price: Number(p.prezzo_finale).toFixed(2),
+          priceCurrency: "EUR",
+          url: p.link,
+          availability: "https://schema.org/InStock",
+        })),
+      },
+    } : {}),
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
 
