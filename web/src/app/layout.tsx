@@ -12,13 +12,6 @@ export const metadata: Metadata = {
   description:
     "Trova il miglior prezzo per i filamenti da stampa 3D. Confronta PLA, PETG, TPU e molti altri tra i principali shop online.",
   metadataBase: new URL(process.env.SITE_URL ?? "https://filamenti.offerteai.it"),
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
   openGraph: {
     siteName: "Filament Finder",
     locale: "it_IT",
