@@ -6,7 +6,7 @@ export default function Header() {
     <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 font-bold text-lg text-zinc-100">
-          <Image src="/logo.png" alt="Filament Finder" width={32} height={30} className="object-contain" />
+          <Image src="/logo.png" alt="Filament Finder" width={36} height={34} className="object-contain" />
           <span>Filament Finder</span>
         </Link>
         <nav className="flex items-center gap-6 text-sm text-zinc-400">
