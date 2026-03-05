@@ -34,12 +34,13 @@ jobs:
             # Copia static files per standalone mode
             cp -r .next/static .next/standalone/.next/static
 
-            # Aggiorna .env.local (non è nel repo, viene preservato)
+            # Copia .env.local nella dir standalone (Next.js lo cerca lì)
+            cp .env.local .next/standalone/.env.local 2>/dev/null || true
 
-            # Avvia/riavvia PM2
+            # Avvia/riavvia PM2 via ecosystem.config.js (ha le env vars corrette)
             pm2 describe filament-finder > /dev/null 2>&1 \
-              && pm2 restart filament-finder \
-              || PORT=3001 pm2 start .next/standalone/server.js --name filament-finder
+              && pm2 restart ecosystem.config.js --update-env \
+              || pm2 start ecosystem.config.js
 
             pm2 save
 
