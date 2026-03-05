@@ -23,7 +23,8 @@ INSERT INTO brand (nome, url) VALUES
     ('Amolen',          'https://amolen.com'),
     ('Creality',        'https://creality.com'),
     ('Extrudr',         'https://extrudr.com'),
-    ('Hatchbox',        'https://hatchbox3d.com');
+    ('Hatchbox',        'https://hatchbox3d.com'),
+    ('Elegoo',          'https://elegoo.com');
 
 -- ============================================================
 -- FILAMENT_TYPE
@@ -212,4 +213,6 @@ INSERT INTO shop (nome, url, paese, tipo) VALUES
     ('3DJake DE',       'https://3djake.de',            'DE', 'reseller'),
     ('FDM Monster',     'https://fdmmonster.eu',        'PL', 'reseller'),
     ('Ardu3D',          'https://ardu3d.com',           'IT', 'reseller'),
-    ('AliExpress',      'https://aliexpress.com',       'CN', 'marketplace');
+    ('AliExpress',      'https://aliexpress.com',       'CN', 'marketplace'),
+    ('Elegoo Store',    'https://elegoo.com/it',        'CN', 'diretto'),
+    ('eSUN Store',      'https://esun3d.com',           'CN', 'diretto');

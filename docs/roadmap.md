@@ -27,6 +27,8 @@
 - [ ] Scraper Prusa Shop
 - [ ] Scraper Bambu Lab Store
 - [ ] Scraper 3DJake / FilamentOne
+- [ ] Scraper Elegoo (elegoo.com/it) — Playwright/API
+- [ ] Scraper eSUN (esun3d.com o reseller ufficiale IT) — Playwright/API
 - [ ] Scheduler rilevazione prezzi (ogni 6-12 ore via cron/systemd)
 - [ ] Alert calo prezzo per utenti registrati (opzionale)
 
