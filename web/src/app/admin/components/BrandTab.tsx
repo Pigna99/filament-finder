@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Modal from "./Modal";
+import { Field, inp } from "./Field";
 
 interface Brand {
   id: number;
@@ -12,11 +14,31 @@ interface Brand {
 
 interface Props { secret: string }
 
+const emptyForm = { nome: "", url: "", logo: "" };
+
+function BrandFields({ form, setForm }: { form: typeof emptyForm; setForm: React.Dispatch<React.SetStateAction<typeof emptyForm>> }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <Field label="Nome brand" tooltip="Nome del produttore, es. Bambu Lab, eSUN, Polymaker" required>
+        <input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={inp} placeholder="es. Bambu Lab" />
+      </Field>
+      <Field label="URL sito ufficiale" tooltip="Homepage del brand, usata per il link nella pagina filamento">
+        <input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className={inp} placeholder="https://bambulab.com" />
+      </Field>
+      <Field label="URL logo" tooltip="Link diretto all'immagine del logo (PNG/SVG), mostrata nella card brand">
+        <input value={form.logo} onChange={e => setForm(f => ({ ...f, logo: e.target.value }))} className={inp} placeholder="https://..." />
+      </Field>
+    </div>
+  );
+}
+
 export default function BrandTab({ secret }: Props) {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ nome: "", url: "", logo: "" });
-  const [editId, setEditId] = useState<number | null>(null);
+  const [newForm, setNewForm] = useState(emptyForm);
+  const [editItem, setEditItem] = useState<Brand | null>(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   async function load() {
@@ -27,62 +49,64 @@ export default function BrandTab({ secret }: Props) {
   }
 
   useEffect(() => { load(); }, []);
-
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(""), 3000); }
 
-  async function save() {
-    const method = editId ? "PATCH" : "POST";
-    const body = editId ? { id: editId, ...form } : form;
+  async function create() {
+    if (!newForm.nome) return;
+    setSaving(true);
     await fetch(`/api/admin/brand?secret=${secret}`, {
-      method,
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(newForm),
     });
-    setForm({ nome: "", url: "", logo: "" });
-    setEditId(null);
-    flash(editId ? "Brand aggiornato" : "Brand creato");
+    setNewForm(emptyForm);
+    flash("Brand creato");
+    setSaving(false);
+    load();
+  }
+
+  async function saveEdit() {
+    if (!editItem) return;
+    setSaving(true);
+    await fetch(`/api/admin/brand?secret=${secret}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editItem.id, ...editForm }),
+    });
+    setEditItem(null);
+    flash("Brand aggiornato");
+    setSaving(false);
     load();
   }
 
   async function del(id: number) {
-    if (!confirm("Eliminare il brand?")) return;
+    if (!confirm("Eliminare il brand? Verranno eliminati anche tutti i filamenti associati.")) return;
     await fetch(`/api/admin/brand?secret=${secret}&id=${id}`, { method: "DELETE" });
     flash("Brand eliminato");
     load();
   }
 
-  function startEdit(b: Brand) {
-    setEditId(b.id);
-    setForm({ nome: b.nome, url: b.url ?? "", logo: b.logo ?? "" });
+  function openEdit(b: Brand) {
+    setEditForm({ nome: b.nome, url: b.url ?? "", logo: b.logo ?? "" });
+    setEditItem(b);
   }
-
-  const inp = "bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm rounded px-3 py-1.5 focus:outline-none focus:border-emerald-500 w-full";
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-zinc-100 mb-4">Brand</h2>
+      <h2 className="text-lg font-semibold text-zinc-100 mb-1">Brand</h2>
+      <p className="text-xs text-zinc-500 mb-5">Produttori di filamenti. Ogni filamento appartiene a un brand.</p>
 
-      {msg && <p className="text-emerald-400 text-sm mb-3">{msg}</p>}
+      {msg && <p className="text-emerald-400 text-sm mb-4">{msg}</p>}
 
-      {/* Form */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6">
-        <h3 className="text-sm font-medium text-zinc-300 mb-3">
-          {editId ? "Modifica brand" : "Nuovo brand"}
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-          <input placeholder="Nome *" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={inp} />
-          <input placeholder="URL sito" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className={inp} />
-          <input placeholder="URL logo" value={form.logo} onChange={e => setForm(f => ({ ...f, logo: e.target.value }))} className={inp} />
-        </div>
-        <div className="flex gap-2">
-          <button onClick={save} disabled={!form.nome} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded transition-colors">
-            {editId ? "Aggiorna" : "Crea"}
+      {/* Form nuovo */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+        <h3 className="text-sm font-semibold text-zinc-200 mb-4">Nuovo brand</h3>
+        <BrandFields form={newForm} setForm={setNewForm} />
+        <div className="mt-4">
+          <button onClick={create} disabled={!newForm.nome || saving}
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg font-medium transition-colors">
+            Crea brand
           </button>
-          {editId && (
-            <button onClick={() => { setEditId(null); setForm({ nome: "", url: "", logo: "" }); }} className="text-zinc-400 hover:text-zinc-200 text-sm px-3 py-1.5">
-              Annulla
-            </button>
-          )}
         </div>
       </div>
 
@@ -93,32 +117,42 @@ export default function BrandTab({ secret }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-zinc-500 text-left border-b border-zinc-800">
-                <th className="pb-2 pr-4">Nome</th>
-                <th className="pb-2 pr-4">URL</th>
-                <th className="pb-2 pr-4">Stato</th>
-                <th className="pb-2"></th>
+              <tr className="text-zinc-500 text-left border-b border-zinc-800 text-xs uppercase tracking-wider">
+                <th className="pb-3 pr-4">Nome</th>
+                <th className="pb-3 pr-4 hidden sm:table-cell">URL sito</th>
+                <th className="pb-3 pr-4">Stato</th>
+                <th className="pb-3"></th>
               </tr>
             </thead>
             <tbody>
               {brands.map(b => (
-                <tr key={b.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                  <td className="py-2 pr-4 text-zinc-100">{b.nome}</td>
-                  <td className="py-2 pr-4 text-zinc-500 truncate max-w-[200px]">{b.url ?? "—"}</td>
-                  <td className="py-2 pr-4">
+                <tr key={b.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20">
+                  <td className="py-2.5 pr-4 text-zinc-100 font-medium">{b.nome}</td>
+                  <td className="py-2.5 pr-4 text-zinc-500 text-xs truncate max-w-[200px] hidden sm:table-cell">
+                    {b.url ? <a href={b.url} target="_blank" className="hover:text-emerald-400 transition-colors">{b.url}</a> : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${b.attivo ? "bg-emerald-900/50 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
                       {b.attivo ? "attivo" : "inattivo"}
                     </span>
                   </td>
-                  <td className="py-2 text-right space-x-2">
-                    <button onClick={() => startEdit(b)} className="text-zinc-400 hover:text-zinc-100 text-xs">Modifica</button>
-                    <button onClick={() => del(b.id)} className="text-red-500 hover:text-red-400 text-xs">Elimina</button>
+                  <td className="py-2.5 text-right space-x-3">
+                    <button onClick={() => openEdit(b)} className="text-zinc-400 hover:text-zinc-100 text-xs transition-colors">Modifica</button>
+                    <button onClick={() => del(b.id)} className="text-red-500 hover:text-red-400 text-xs transition-colors">Elimina</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {brands.length === 0 && <p className="text-zinc-600 text-sm py-4 text-center">Nessun brand. Creane uno sopra.</p>}
         </div>
+      )}
+
+      {/* Modale edit */}
+      {editItem && (
+        <Modal title={`Modifica — ${editItem.nome}`} onClose={() => setEditItem(null)} onSave={saveEdit} saving={saving}>
+          <BrandFields form={editForm} setForm={setEditForm} />
+        </Modal>
       )}
     </div>
   );
