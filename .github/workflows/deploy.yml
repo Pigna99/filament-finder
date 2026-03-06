@@ -18,28 +18,26 @@ jobs:
           script: |
             cd /opt/filament-finder
 
-            # Pull latest code
+            # Pull latest code (il vecchio processo continua a rispondere)
             git fetch origin master
             git reset --hard origin/master
 
             cd web
 
-            # Stop PM2 prima della build
-            pm2 stop filament-finder 2>/dev/null || true
-
-            # Installa dipendenze e builda
+            # Installa dipendenze e builda (PM2 resta attivo durante la build)
             npm ci
             npm run build
 
-            # Copia static files per standalone mode
+            # Copia static files e public per standalone mode
             cp -r .next/static .next/standalone/.next/static
+            cp -r public .next/standalone/public
 
             # Copia .env.local nella dir standalone (Next.js lo cerca lì)
             cp .env.local .next/standalone/.env.local 2>/dev/null || true
 
-            # Avvia/riavvia PM2 via ecosystem.config.js (ha le env vars corrette)
+            # Zero-downtime reload: PM2 avvia nuovo processo, poi chiude il vecchio
             pm2 describe filament-finder > /dev/null 2>&1 \
-              && pm2 restart ecosystem.config.js --update-env \
+              && pm2 reload ecosystem.config.js --update-env \
               || pm2 start ecosystem.config.js
 
             pm2 save
