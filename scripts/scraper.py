@@ -51,7 +51,7 @@ TYPE_MAP = [
     ("PETG-CF", ["petg-cf", "petg cf", "petg carbon"]),
     ("PA-CF",   ["pa-cf", "pa cf", "nylon cf", "nylon carbon"]),
     ("ASA",     ["asa"]),
-    ("ABS",     ["abs+"," abs "]),
+    ("ABS",     ["abs+", " abs ", "abs-", "-abs"]),
     ("PETG",    ["petg", "pet-g"]),
     ("TPU",     ["tpu", "flexible filament", "elastico", "flessibile"]),
     ("NYLON",   ["nylon", "polyamide", "pa6", "pa12", "pa11", "pa 6", "pa 12"]),
@@ -686,7 +686,10 @@ def scrape_elegoo(db: DB):
 SUNLU_SKIP_KEYWORDS = [
     "moq", "bundle", "confezione", "pacchetto", "vip", "accesso", "5kg", "10kg",
     "3kg bobina", "3 kg", "grande bobina", "assortimento", "penna 3d", "essiccatore",
-    "dryer", "worry", "clearance", "special offer", "canada only", "kit"
+    "dryer", "worry", "clearance", "special offer", "canada only", "kit",
+    "8 rotoli", "10 rotoli", "rotoli", "multipack", "multi pack", "set di",
+    "valentino", "halloween", "natale", "christmas", "san valentino",
+    "promo", "combo", "misto", "mistero", "mystery", "surprise",
 ]
 
 
@@ -702,11 +705,20 @@ def scrape_sunlu(db: DB):
     products = fetch_shopify_products("https://it.store.sunlu.com")
     log.info(f"Trovati {len(products)} prodotti totali")
 
-    # Filtra filamenti singoli (no bundle, no MOQ, no accessori)
     def is_valid_sunlu(p: dict) -> bool:
         title = p.get("title", "").lower()
+        tags = " ".join(p.get("tags", [])).lower()
+        # Salta bundle, MOQ e kit
         if any(kw in title for kw in SUNLU_SKIP_KEYWORDS):
             return False
+        # Salta se ha tag MOQ
+        if "moq" in tags:
+            return False
+        # Salta varianti con titolo troppo lungo (spesso multi-prodotto)
+        for v in p.get("variants", []):
+            vt = v.get("title", "")
+            if "+" in vt and len(vt.split("+")) > 3:
+                return False
         return is_filament_product(p)
 
     filament_products = [p for p in products if is_valid_sunlu(p)]
@@ -714,8 +726,6 @@ def scrape_sunlu(db: DB):
 
     total = 0
     for p in filament_products:
-        # SUNLU: variante spesso "Colore Peso" o "Tipo / Colore"
-        # detect_weight cerca nel titolo del prodotto
         peso_nel_titolo = detect_weight(p.get("title", ""))
         n = process_shopify_product(
             p, brand_id, shop_id, db, "https://it.store.sunlu.com",
@@ -724,6 +734,185 @@ def scrape_sunlu(db: DB):
         total += n
 
     log.info(f"SUNLU: {total} varianti processate")
+
+
+# ── Scraper eSUN EU ────────────────────────────────────────────────────────────
+
+ESUN_BASE = "https://esun3dstoreeu.com"
+ESUN_CDN  = "https://ueeshop.ly200-cdn.com/u_file/UPBC/UPBC810"
+
+ESUN_SKIP = [
+    "ebox", "evac", "resin", "wash", "standard-resin", "hard-tough",
+    "pla-cmyk", "pla-uv-color", "luminous-rainbow", "silk-rainbow",
+    "silk-candy", "silk-magic", "silk-metal",  # speciali multi-color
+    "chameleon", "magic",  # color-change
+    "10-rolls", "10rolls",
+]
+
+
+def fetch_esun_product(url: str) -> Optional[dict]:
+    """
+    Scarica una pagina prodotto eSUN EU ed estrae:
+    - prezzo EUR (da meta og)
+    - disponibilità (da JSON-LD)
+    - immagine principale
+    - lista colori con immagine specifica (da product_data JS)
+    """
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        log.warning(f"  Errore fetch {url}: {e}")
+        return None
+
+    # Prezzo dal meta tag (più affidabile del JSON-LD per eSUN)
+    price_m = re.search(
+        r'<meta property="product:price:amount" content="([0-9.]+)"', html
+    )
+    if not price_m:
+        return None
+    try:
+        price = float(price_m.group(1))
+    except ValueError:
+        return None
+    if price <= 0:
+        return None
+
+    # Disponibilità da JSON-LD
+    available = True
+    jld_m = re.search(r'"availability"\s*:\s*"([^"]+)"', html)
+    if jld_m:
+        available = "InStock" in jld_m.group(1)
+
+    # Immagine principale da JSON-LD
+    img_m = re.search(r'"image"\s*:\s*\["([^"]+)"', html)
+    main_image = img_m.group(1) if img_m else None
+
+    # product_data JS — colori e immagini per variante
+    colors: list[dict] = []  # [{name, image_url}]
+    pd_start = html.find("var product_data = {")
+    if pd_start != -1:
+        pd_start = html.find("{", pd_start)
+        depth = 0; pd_end = pd_start
+        for i, c in enumerate(html[pd_start:], pd_start):
+            if c == "{": depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0: pd_end = i + 1; break
+        try:
+            pd = json.loads(html[pd_start:pd_end])
+            opts = pd.get("option_data", [])
+            if opts:
+                color_opt = next(
+                    (o for o in opts if o.get("Name", "").lower() == "color"), None
+                )
+                if color_opt:
+                    for color_name, cdata in color_opt.get("Data", {}).items():
+                        img_path = cdata.get("main", "")
+                        img_url = (ESUN_CDN + img_path) if img_path else main_image
+                        colors.append({"name": color_name, "image": img_url})
+        except Exception as e:
+            log.debug(f"  Errore parse product_data: {e}")
+
+    return {
+        "price": price,
+        "available": available,
+        "main_image": main_image,
+        "colors": colors,
+    }
+
+
+def scrape_esun(db: DB):
+    log.info("=== eSUN EU ===")
+    brand_id = db.get_brand_id("eSUN")
+    shop_id = db.get_shop_id("eSUN")
+    if not brand_id or not shop_id:
+        log.error("Brand o shop eSUN non trovato nel DB")
+        return
+
+    log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
+
+    # 1. Raccogli URL prodotti dalla collection filamento
+    try:
+        r = requests.get(f"{ESUN_BASE}/collections/3d-filament", headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        log.error(f"Errore fetch collection eSUN: {e}")
+        return
+
+    product_paths = sorted(set(re.findall(r'href="(/products/[^"?#]+)"', html)))
+    product_paths = [
+        p for p in product_paths
+        if not any(skip in p for skip in ESUN_SKIP)
+    ]
+    log.info(f"Trovati {len(product_paths)} URL filamenti eSUN")
+
+    total = 0
+    for path in product_paths:
+        slug = path.lstrip("/products/").replace("/products/", "")
+        title_guess = slug.replace("-", " ").title()
+        combined = title_guess
+
+        type_nome = detect_type(combined)
+        if not type_nome:
+            log.debug(f"  Skip tipo non rilevato: {slug}")
+            continue
+
+        variant_nome = detect_variant(type_nome, combined)
+        type_id = db.get_or_create_type(type_nome)
+        if type_id < 0:
+            continue
+        variant_id = db.get_or_create_variant(type_id, variant_nome)
+        if variant_id < 0:
+            continue
+
+        peso_g = detect_weight(combined + " 1kg")
+        url = ESUN_BASE + path
+
+        data = fetch_esun_product(url)
+        if not data:
+            log.debug(f"  Skip (fetch fallito): {slug}")
+            continue
+
+        prezzo = data["price"]
+        available = data["available"]
+
+        colors = data["colors"]
+        if not colors:
+            # Nessun colore rilevato: crea filamento generico
+            colore, colore_hex, colore_famiglia = detect_color(combined)
+            fil_id = db.get_or_create_filament(
+                variant_id, brand_id, colore, colore_hex, colore_famiglia,
+                peso_g, 1.75, data["main_image"], None
+            )
+            if fil_id < 0:
+                continue
+            fs_id = db.get_or_create_filament_shop(fil_id, shop_id, url)
+            if fs_id >= 0:
+                db.insert_price(fs_id, prezzo, None, available)
+                total += 1
+        else:
+            # Crea un filamento per ogni colore
+            for color_entry in colors:
+                color_name = color_entry["name"]
+                color_img = color_entry["image"]
+                colore, colore_hex, colore_famiglia = detect_color(color_name)
+                fil_id = db.get_or_create_filament(
+                    variant_id, brand_id, colore, colore_hex, colore_famiglia,
+                    peso_g, 1.75, color_img, None
+                )
+                if fil_id < 0:
+                    continue
+                fs_id = db.get_or_create_filament_shop(fil_id, shop_id, url)
+                if fs_id >= 0:
+                    db.insert_price(fs_id, prezzo, None, available)
+                    total += 1
+
+        time.sleep(0.5)
+
+    log.info(f"eSUN EU: {total} varianti processate")
 
 
 # ── Scraper Bambu Lab EU ──────────────────────────────────────────────────────
@@ -872,7 +1061,7 @@ def scrape_bambu(db: DB):
 
 def main():
     parser = argparse.ArgumentParser(description="Filament Finder Scraper")
-    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "all"], default="all")
+    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "all"], default="all")
     parser.add_argument("--dry-run", action="store_true", help="Non scrive nel DB")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -897,6 +1086,9 @@ def main():
 
     if args.shop in ("sunlu", "all"):
         scrape_sunlu(db)
+
+    if args.shop in ("esun", "all"):
+        scrape_esun(db)
 
     if args.shop in ("bambu", "all"):
         scrape_bambu(db)
