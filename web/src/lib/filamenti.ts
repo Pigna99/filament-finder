@@ -128,8 +128,7 @@ export async function getPrezziShop(id_filament: number): Promise<PrezzoShop[]> 
     FROM v_price_latest vpl
     JOIN shop s ON s.id = vpl.id_shop
     WHERE vpl.id_filament = ${id_filament}
-      AND vpl.disponibile = TRUE
-    ORDER BY vpl.prezzo_finale ASC
+    ORDER BY vpl.disponibile DESC, vpl.prezzo_finale ASC
   `;
 }
 

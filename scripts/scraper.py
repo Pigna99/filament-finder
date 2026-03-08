@@ -153,8 +153,72 @@ COLOR_DB: dict[str, tuple[str, str, str]] = {
     "multicolore":  ("Multicolor",   "#888888", "multicolor"),
     "rainbow":      ("Rainbow",      "#888888", "multicolor"),
     "arcobaleno":   ("Rainbow",      "#888888", "multicolor"),
-    "bambu green":  ("Bambu Green",  "#4caf50", "verde"),
-    "jade green":   ("Jade Green",   "#00a693", "verde"),
+    "bambu green":      ("Bambu Green",   "#4caf50", "verde"),
+    "jade green":       ("Jade Green",    "#00a693", "verde"),
+    "cyan":             ("Ciano",         "#00bcd4", "blu"),
+    "ciano":            ("Ciano",         "#00bcd4", "blu"),
+    "teal":             ("Teal",          "#008080", "verde"),
+    "turquoise":        ("Turchese",      "#40e0d0", "verde"),
+    "turchese":         ("Turchese",      "#40e0d0", "verde"),
+    "mint":             ("Menta",         "#98ff98", "verde"),
+    "menta":            ("Menta",         "#98ff98", "verde"),
+    "lime":             ("Verde lime",    "#32cd32", "verde"),
+    "olive":            ("Verde oliva",   "#808000", "verde"),
+    "forest green":     ("Verde foresta", "#228b22", "verde"),
+    "dark blue":        ("Blu scuro",     "#00008b", "blu"),
+    "royal blue":       ("Blu royal",     "#4169e1", "blu"),
+    "cobalt blue":      ("Blu cobalto",   "#0047ab", "blu"),
+    "indigo":           ("Indaco",        "#4b0082", "viola"),
+    "violet":           ("Violetto",      "#8b00ff", "viola"),
+    "lavender":         ("Lavanda",       "#e6e6fa", "viola"),
+    "lilac":            ("Lilla",         "#c8a2c8", "viola"),
+    "hot pink":         ("Rosa acceso",   "#ff69b4", "viola"),
+    "light pink":       ("Rosa chiaro",   "#ffb6c1", "viola"),
+    "coral":            ("Corallo",       "#ff6347", "rosso"),
+    "salmon":           ("Salmone",       "#fa8072", "rosso"),
+    "crimson":          ("Cremisi",       "#dc143c", "rosso"),
+    "dark red":         ("Rosso scuro",   "#8b0000", "rosso"),
+    "wine":             ("Bordeaux",      "#722f37", "rosso"),
+    "bordeaux":         ("Bordeaux",      "#722f37", "rosso"),
+    "burgundy":         ("Bordeaux",      "#800020", "rosso"),
+    "amber":            ("Ambra",         "#ffbf00", "giallo"),
+    "yellow green":     ("Giallo-verde",  "#9acd32", "verde"),
+    "tan":              ("Sabbia",        "#d2b48c", "marrone"),
+    "beige":            ("Beige",         "#f5f5dc", "marrone"),
+    "cream":            ("Crema",         "#fffdd0", "bianco"),
+    "ivory":            ("Avorio",        "#fffff0", "bianco"),
+    "bone":             ("Osso",          "#f9f6ee", "bianco"),
+    "off white":        ("Bianco sporco", "#faf9f6", "bianco"),
+    "khaki":            ("Kaki",          "#c3b091", "marrone"),
+    "sand":             ("Sabbia",        "#c2b280", "marrone"),
+    "chocolate":        ("Cioccolato",    "#7b3f00", "marrone"),
+    "coffee":           ("Caffè",         "#6f4e37", "marrone"),
+    "caramel":          ("Caramello",     "#c68642", "marrone"),
+    "bronze":           ("Bronzo",        "#cd7f32", "marrone"),
+    "copper":           ("Rame",          "#b87333", "marrone"),
+    "rose gold":        ("Oro rosa",      "#b76e79", "viola"),
+    "matte black":      ("Nero opaco",    "#1a1a1a", "nero"),
+    "matte white":      ("Bianco opaco",  "#f0f0f0", "bianco"),
+    "marble":           ("Marmo",         "#c8c8c8", "grigio"),
+    "wood":             ("Legno",         "#8b6914", "marrone"),
+    "glow":             ("Fosforescente", "#ccff00", "multicolor"),
+    "glow in the dark": ("Fosforescente", "#ccff00", "multicolor"),
+    "color change":     ("Cambia colore", "#888888", "multicolor"),
+    "thermal":          ("Termocromico",  "#888888", "multicolor"),
+    "silk gold":        ("Oro silk",      "#ffd700", "giallo"),
+    "silk silver":      ("Argento silk",  "#c0c0c0", "grigio"),
+    "silk copper":      ("Rame silk",     "#b87333", "marrone"),
+    "silk red":         ("Rosso silk",    "#cc0000", "rosso"),
+    "silk blue":        ("Blu silk",      "#0033cc", "blu"),
+    "silk green":       ("Verde silk",    "#008000", "verde"),
+    "galaxy black":     ("Galaxy nero",   "#1a1a1a", "nero"),
+    "starlight":        ("Stellato",      "#c8d0e8", "bianco"),
+    "brick red":        ("Rosso mattone", "#8b2500", "rosso"),
+    "light gray":       ("Grigio chiaro", "#c0c0c0", "grigio"),
+    "dark gray":        ("Grigio scuro",  "#404040", "grigio"),
+    "charcoal":         ("Antracite",     "#36454f", "grigio"),
+    "space gray":       ("Grigio space",  "#6e7681", "grigio"),
+    "refill":           (None,            None,      None),   # skip refill
 }
 
 WEIGHT_RE = re.compile(
@@ -191,7 +255,10 @@ def detect_color(text: str) -> tuple[Optional[str], Optional[str], Optional[str]
     # cerca match più lungo prima
     for key in sorted(COLOR_DB.keys(), key=len, reverse=True):
         if key in t:
-            return COLOR_DB[key]
+            val = COLOR_DB[key]
+            if val[0] is None:  # colore esplicitamente escluso (es. "refill")
+                return (None, None, None)
+            return val
     return (None, None, None)
 
 
@@ -510,16 +577,19 @@ def process_shopify_product(
         compare_price = None
         if compare_price_str:
             try:
-                compare_price = float(compare_price_str)
+                cp = float(compare_price_str)
+                if cp > 0:  # ignora "0.00" (Shopify placeholder non-sconto)
+                    compare_price = cp
             except ValueError:
                 pass
 
         # Determina prezzo scontato
+        # Shopify: price = prezzo attuale, compare_at_price = prezzo originale (barrato)
         prezzo = price
         prezzo_scontato = None
         if compare_price and compare_price > price:
-            prezzo = compare_price   # prezzo pieno
-            prezzo_scontato = price  # prezzo scontato
+            prezzo = compare_price   # prezzo pieno (originale)
+            prezzo_scontato = price  # prezzo scontato (corrente)
 
         # Colore e peso dalla variante
         color_raw, peso_g_detected = parse_shopify_variant_title(v_title)
@@ -582,31 +652,23 @@ def scrape_elegoo(db: DB):
 
     log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
 
-    # Elegoo organizza per collection tipologia
-    elegoo_collections = ["filaments", "pla-filament", "petg-filaments", "tpu-filaments", "abs-filaments"]
-    all_products: dict[int, dict] = {}
-    for coll in elegoo_collections:
-        prods = fetch_shopify_products("https://www.elegoo.com", coll)
-        for p in prods:
-            all_products[p["id"]] = p  # dedup per id
+    # Elegoo EU store (eu.elegoo.com) — prezzi in EUR, unica collection "filaments"
+    ELEGOO_EU = "https://eu.elegoo.com"
+    products_raw = fetch_shopify_products(ELEGOO_EU, "filaments")
+    log.info(f"Trovati {len(products_raw)} prodotti nella collection filaments")
 
-    products = list(all_products.values())
-    log.info(f"Trovati {len(products)} prodotti unici")
-
-    # Per Elegoo tutti i prodotti nelle collection filamenti sono filamenti
-    # ma aggiungiamo comunque il check di tipo
-    filament_products = [p for p in products if detect_type(p.get("title","")) is not None
-                        or detect_type(" ".join(p.get("tags",[]))) is not None]
+    filament_products = [p for p in products_raw if
+        detect_type(p.get("title","")) is not None or
+        detect_type(" ".join(p.get("tags",[]))) is not None]
     log.info(f"Filtrati {len(filament_products)} filamenti da processare")
 
     total = 0
     for p in filament_products:
-        # Elegoo: peso sempre 1kg (non è nel titolo variante), colore è l'ultima parte dopo /
-        n = process_shopify_product(p, brand_id, shop_id, db, "https://www.elegoo.com",
+        n = process_shopify_product(p, brand_id, shop_id, db, ELEGOO_EU,
                                     default_weight_g=1000)
         total += n
 
-    log.info(f"Elegoo: {total} varianti processate")
+    log.info(f"Elegoo EU: {total} varianti processate")
 
 
 # ── Scraper SUNLU ─────────────────────────────────────────────────────────────

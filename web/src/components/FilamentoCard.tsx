@@ -6,7 +6,8 @@ interface Props {
   f: FilamentoRow;
 }
 
-const DIFFICOLTA = ["", "★☆☆☆☆", "★★☆☆☆", "★★★☆☆", "★★★★☆", "★★★★★"];
+const DIFFICOLTA_LABEL = ["", "Molto facile", "Facile", "Medio", "Difficile", "Avanzato"];
+const DIFFICOLTA_COLOR = ["", "text-emerald-500", "text-emerald-400", "text-amber-400", "text-orange-400", "text-red-400"];
 
 export default function FilamentoCard({ f }: Props) {
   const slug = slugifyFilamento(f.brand, f.tipo, f.variante, f.colore, f.peso_g);
@@ -66,8 +67,11 @@ export default function FilamentoCard({ f }: Props) {
           </div>
           {/* Difficoltà stampa */}
           {f.difficolta_stampa && (
-            <span className="text-xs text-zinc-600" title="Difficoltà stampa">
-              {DIFFICOLTA[f.difficolta_stampa]}
+            <span
+              className={`text-xs font-medium ${DIFFICOLTA_COLOR[f.difficolta_stampa]}`}
+              title="Difficoltà di stampa"
+            >
+              {DIFFICOLTA_LABEL[f.difficolta_stampa]}
             </span>
           )}
         </div>

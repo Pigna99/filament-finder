@@ -180,39 +180,56 @@ export default async function FilamentoPage({ params }: Props) {
                 <p className="text-zinc-500 text-sm">Nessun prezzo disponibile.</p>
               ) : (
                 <div className="space-y-3">
-                  {prezziShop.map((p, i) => (
-                    <div key={p.id_filament_shop} className={`flex items-center justify-between p-3 rounded-xl ${i === 0 ? "bg-emerald-950/50 border border-emerald-800/50" : "bg-zinc-800/50"}`}>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-zinc-100">{p.shop}</span>
-                          {i === 0 && <span className="text-xs bg-emerald-600 text-white px-1.5 rounded">migliore</span>}
-                          {p.paese && <span className="text-xs text-zinc-600">{p.paese}</span>}
+                  {prezziShop.map((p, i) => {
+                    const disponibile = p.disponibile;
+                    const isBest = disponibile && i === 0;
+                    return (
+                      <div key={p.id_filament_shop} className={`flex items-center justify-between p-3 rounded-xl ${
+                        !disponibile ? "bg-zinc-800/20 border border-zinc-800/30 opacity-60" :
+                        isBest ? "bg-emerald-950/50 border border-emerald-800/50" : "bg-zinc-800/50"
+                      }`}>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-sm font-medium ${disponibile ? "text-zinc-100" : "text-zinc-500"}`}>{p.shop}</span>
+                            {isBest && <span className="text-xs bg-emerald-600 text-white px-1.5 rounded">migliore</span>}
+                            {!disponibile && <span className="text-xs bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">Non disponibile</span>}
+                            {p.paese && <span className="text-xs text-zinc-600">{p.paese}</span>}
+                          </div>
+                          {p.codice_sconto && disponibile && (
+                            <span className="text-xs text-amber-400">Coupon: {p.codice_sconto}</span>
+                          )}
+                          {p.prezzo_spedizione > 0 && disponibile && (
+                            <span className="text-xs text-zinc-500"> + €{Number(p.prezzo_spedizione).toFixed(2)} spedizione</span>
+                          )}
                         </div>
-                        {p.codice_sconto && (
-                          <span className="text-xs text-amber-400">Coupon: {p.codice_sconto}</span>
-                        )}
-                        {p.prezzo_spedizione > 0 && (
-                          <span className="text-xs text-zinc-500"> + €{Number(p.prezzo_spedizione).toFixed(2)} spedizione</span>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-bold ${i === 0 ? "text-emerald-400" : "text-zinc-100"}`}>
-                          € {Number(p.prezzo_finale).toFixed(2)}
+                        <div className="text-right">
+                          {disponibile ? (
+                            <>
+                              {p.prezzo_scontato && (
+                                <div className="text-xs text-zinc-500 line-through">€ {Number(p.prezzo).toFixed(2)}</div>
+                              )}
+                              <div className={`font-bold ${isBest ? "text-emerald-400" : "text-zinc-100"}`}>
+                                € {Number(p.prezzo_finale).toFixed(2)}
+                              </div>
+                              {p.prezzo_per_kg && (
+                                <div className="text-xs text-zinc-500">€ {Number(p.prezzo_per_kg).toFixed(2)}/kg</div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-xs text-zinc-600 mb-1">ultimo: € {Number(p.prezzo_finale).toFixed(2)}</div>
+                          )}
+                          <a
+                            href={p.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`text-xs mt-1 inline-block ${disponibile ? "text-emerald-400 hover:underline" : "text-zinc-600 hover:text-zinc-400"}`}
+                          >
+                            {disponibile ? "Vai al prodotto →" : "Visita pagina →"}
+                          </a>
                         </div>
-                        {p.prezzo_per_kg && (
-                          <div className="text-xs text-zinc-500">€ {Number(p.prezzo_per_kg).toFixed(2)}/kg</div>
-                        )}
-                        <a
-                          href={p.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-emerald-400 hover:underline mt-1 inline-block"
-                        >
-                          Vai al prodotto →
-                        </a>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
