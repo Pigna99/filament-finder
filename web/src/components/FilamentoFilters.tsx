@@ -22,6 +22,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
   const [brand, setBrand] = useState("");
   const [diametro, setDiametro] = useState("");
   const [famiglia, setFamiglia] = useState("");
+  const [peso, setPeso] = useState("");
   const [prezzoMax, setPrezzoMax] = useState("");
   const [sortBy, setSortBy] = useState<"prezzo" | "brand" | "tipo">("prezzo");
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -32,6 +33,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
       if (brand && f.brand !== brand) return false;
       if (diametro && String(f.diametro_mm) !== diametro) return false;
       if (famiglia && f.colore_famiglia !== famiglia) return false;
+      if (peso && f.peso_g !== Number(peso)) return false;
       if (prezzoMax && f.prezzo_per_kg_min != null && Number(f.prezzo_per_kg_min) > Number(prezzoMax)) return false;
       if (q) {
         const search = q.toLowerCase();
@@ -52,7 +54,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
       if (sortBy === "brand") return `${a.brand}${a.variante}`.localeCompare(`${b.brand}${b.variante}`);
       return `${a.tipo}${a.variante}`.localeCompare(`${b.tipo}${b.variante}`);
     });
-  }, [filamenti, q, tipo, brand, diametro, famiglia, prezzoMax, sortBy]);
+  }, [filamenti, q, tipo, brand, diametro, famiglia, peso, prezzoMax, sortBy]);
 
   return (
     <div>
@@ -78,6 +80,16 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           <option value="1.75">1.75 mm</option>
           <option value="2.85">2.85 mm</option>
         </select>
+        <select value={peso} onChange={(e) => setPeso(e.target.value)} className={sel}>
+          <option value="">Tutti i pesi</option>
+          <option value="250">250 g</option>
+          <option value="500">500 g</option>
+          <option value="1000">1 kg</option>
+          <option value="2000">2 kg</option>
+          <option value="3000">3 kg</option>
+          <option value="5000">5 kg</option>
+          <option value="10000">10 kg</option>
+        </select>
         <select value={famiglia} onChange={(e) => setFamiglia(e.target.value)} className={sel}>
           <option value="">Tutti i colori</option>
           {famiglie.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -94,9 +106,9 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           <option value="brand">Brand A-Z</option>
           <option value="tipo">Tipo A-Z</option>
         </select>
-        {(q || tipo || brand || diametro || famiglia || prezzoMax) && (
+        {(q || tipo || brand || diametro || famiglia || peso || prezzoMax) && (
           <button
-            onClick={() => { setQ(""); setTipo(""); setBrand(""); setDiametro(""); setFamiglia(""); setPrezzoMax(""); }}
+            onClick={() => { setQ(""); setTipo(""); setBrand(""); setDiametro(""); setFamiglia(""); setPeso(""); setPrezzoMax(""); }}
             className="text-zinc-500 hover:text-zinc-300 text-sm px-2 transition-colors"
           >
             ✕ Reset
