@@ -9,6 +9,21 @@ interface Props {
 const DIFFICOLTA_LABEL = ["", "Molto facile", "Facile", "Medio", "Difficile", "Avanzato"];
 const DIFFICOLTA_COLOR = ["", "text-emerald-500", "text-emerald-400", "text-amber-400", "text-orange-400", "text-red-400"];
 
+const TYPE_BADGE: Record<string, string> = {
+  "PLA":     "bg-emerald-950/90 text-emerald-400 border border-emerald-800/50",
+  "PLA-CF":  "bg-teal-950/90 text-teal-300 border border-teal-700/50",
+  "PETG":    "bg-blue-950/90 text-blue-400 border border-blue-800/50",
+  "PETG-CF": "bg-blue-950/90 text-blue-300 border border-blue-700/50",
+  "ABS":     "bg-orange-950/90 text-orange-400 border border-orange-800/50",
+  "ASA":     "bg-amber-950/90 text-amber-400 border border-amber-800/50",
+  "TPU":     "bg-purple-950/90 text-purple-400 border border-purple-800/50",
+  "NYLON":   "bg-cyan-950/90 text-cyan-400 border border-cyan-800/50",
+  "PA-CF":   "bg-cyan-950/90 text-cyan-300 border border-cyan-700/50",
+  "PC":      "bg-red-950/90 text-red-400 border border-red-800/50",
+  "HIPS":    "bg-zinc-900/90 text-zinc-300 border border-zinc-700/50",
+  "PVA":     "bg-pink-950/90 text-pink-400 border border-pink-800/50",
+};
+
 export default function FilamentoCard({ f }: Props) {
   const slug = slugifyFilamento(f.brand, f.tipo, f.variante, f.colore, f.peso_g);
   const prezzoKg = f.prezzo_per_kg_min
@@ -47,7 +62,7 @@ export default function FilamentoCard({ f }: Props) {
           </div>
         )}
         {/* Badge tipo */}
-        <span className="absolute top-2 left-2 bg-zinc-950/80 text-emerald-400 text-xs font-mono px-2 py-0.5 rounded-full">
+        <span className={`absolute top-2 left-2 text-xs font-mono px-2 py-0.5 rounded-full ${TYPE_BADGE[f.tipo] ?? "bg-zinc-950/80 text-zinc-400 border border-zinc-700/50"}`}>
           {f.tipo}
         </span>
       </div>
@@ -65,11 +80,11 @@ export default function FilamentoCard({ f }: Props) {
         {/* Prezzo */}
         <div className="mt-3 flex items-end justify-between">
           <div>
-            {prezzoKg && (
-              <p className="text-emerald-400 font-bold text-sm">{prezzoKg}</p>
-            )}
             {prezzoMin && (
-              <p className="text-zinc-400 text-xs">{prezzoMin}</p>
+              <p className="text-zinc-100 font-bold text-sm">{prezzoMin}</p>
+            )}
+            {prezzoKg && (
+              <p className="text-emerald-400 text-xs font-medium">{prezzoKg}</p>
             )}
             {!prezzoKg && !prezzoMin && (
               <p className="text-zinc-600 text-xs">Nessun prezzo</p>
