@@ -55,7 +55,7 @@ TYPE_MAP = [
     ("PETG",    ["petg", "pet-g"]),
     ("TPU",     ["tpu", "flexible filament", "elastico", "flessibile"]),
     ("NYLON",   ["nylon", "polyamide", "pa6", "pa12", "pa11", "pa 6", "pa 12"]),
-    ("PC",      ["polycarbonate", "policarbonato", " pc filament", "pc+"]),
+    ("PC",      ["polycarbonate", "policarbonato", " pc filament", "pc filamento", " pc ", "pc+"]),
     ("HIPS",    ["hips"]),
     ("PVA",     ["pva"]),
     ("PLA",     ["pla"]),  # ultimo: molti nomi iniziano con PLA
@@ -492,10 +492,11 @@ def is_filament_product(product: dict) -> bool:
     # Deve contenere almeno un tipo di materiale
     if detect_type(combined) is None:
         return False
-    # Escludi accessori non-filamento
+    # Escludi accessori non-filamento (il detect_type sopra già filtra i prodotti
+    # senza materiale nel nome, quindi qui escludiamo solo accessori espliciti)
     exclude = ["nozzle", "ugello", "build plate", "piano", "tool", "strumento",
-               "coupon", "vip", "bundle pack", "starter kit", "printer", "stampante",
-               "bag", "sacchetto", "drybox", "filament dryer", "box"]
+               "coupon", "bundle pack", "starter kit",
+               "bag", "sacchetto", "drybox", "filament dryer"]
     for ex in exclude:
         if ex in combined:
             return False
@@ -690,6 +691,11 @@ SUNLU_SKIP_KEYWORDS = [
     "8 rotoli", "10 rotoli", "rotoli", "multipack", "multi pack", "set di",
     "valentino", "halloween", "natale", "christmas", "san valentino",
     "promo", "combo", "misto", "mistero", "mystery", "surprise",
+    # accessori e non-filamento
+    "resina", "resin", "connettore", "saldatore", "kidoodle", "piastra",
+    "kollektion", "collection", "buono regalo", "gift card",
+    # multipack large spool
+    "riciclati",
 ]
 
 
