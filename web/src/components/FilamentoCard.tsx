@@ -44,6 +44,7 @@ export default function FilamentoCard({ f }: Props) {
             src={f.link_immagine}
             alt={`${f.brand} ${f.tipo} ${f.variante} ${f.colore ?? ""}`}
             className="w-full h-full object-contain p-3"
+            loading="lazy"
           />
         ) : (
           /* Swatch colore stilizzato come bobina */
@@ -90,16 +91,23 @@ export default function FilamentoCard({ f }: Props) {
               <p className="text-zinc-600 text-xs">Nessun prezzo</p>
             )}
           </div>
-          {/* Difficoltà stampa */}
-          {f.difficolta_stampa && (
-            <span
-              className={`text-xs font-medium ${DIFFICOLTA_COLOR[f.difficolta_stampa]}`}
-              title="Difficoltà di stampa"
-            >
-              {DIFFICOLTA_LABEL[f.difficolta_stampa]}
-            </span>
-          )}
-        </div>
+          {/* Shop count + Difficoltà stampa */}
+          <div className="flex flex-col items-end gap-1">
+            {f.difficolta_stampa && (
+              <span
+                className={`text-xs font-medium ${DIFFICOLTA_COLOR[f.difficolta_stampa]}`}
+                title="Difficoltà di stampa"
+              >
+                {DIFFICOLTA_LABEL[f.difficolta_stampa]}
+              </span>
+            )}
+            {Number(f.num_shop) > 0 && (
+              <span className="text-xs text-zinc-600" title="Disponibile in questi shop">
+                {Number(f.num_shop)} shop
+              </span>
+            )}
+          </div>
+        </div>{/* end flex justify-between */}
 
         {/* Swatch colore inline (solo se c'è immagine prodotto) */}
         {f.link_immagine && f.colore_hex && (

@@ -19,6 +19,21 @@ const sel =
 
 type SortKey = "prezzo" | "brand" | "tipo" | "colore" | "peso" | "prezzo_min";
 
+const TYPE_PILL: Record<string, string> = {
+  "PLA":     "border-emerald-700/60 text-emerald-400 data-[active]:bg-emerald-900/50 data-[active]:border-emerald-600",
+  "PLA-CF":  "border-teal-700/60 text-teal-300 data-[active]:bg-teal-900/50 data-[active]:border-teal-600",
+  "PETG":    "border-blue-700/60 text-blue-400 data-[active]:bg-blue-900/50 data-[active]:border-blue-600",
+  "PETG-CF": "border-blue-700/60 text-blue-300 data-[active]:bg-blue-900/50 data-[active]:border-blue-600",
+  "ABS":     "border-orange-700/60 text-orange-400 data-[active]:bg-orange-900/50 data-[active]:border-orange-600",
+  "ASA":     "border-amber-700/60 text-amber-400 data-[active]:bg-amber-900/50 data-[active]:border-amber-600",
+  "TPU":     "border-purple-700/60 text-purple-400 data-[active]:bg-purple-900/50 data-[active]:border-purple-600",
+  "NYLON":   "border-cyan-700/60 text-cyan-400 data-[active]:bg-cyan-900/50 data-[active]:border-cyan-600",
+  "PA-CF":   "border-cyan-700/60 text-cyan-300 data-[active]:bg-cyan-900/50 data-[active]:border-cyan-600",
+  "PC":      "border-red-700/60 text-red-400 data-[active]:bg-red-900/50 data-[active]:border-red-600",
+  "HIPS":    "border-zinc-600/60 text-zinc-300 data-[active]:bg-zinc-800 data-[active]:border-zinc-500",
+  "PVA":     "border-pink-700/60 text-pink-400 data-[active]:bg-pink-900/50 data-[active]:border-pink-600",
+};
+
 export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -111,8 +126,9 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
 
   return (
     <div>
-      {/* Filtri */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      {/* Filtri — sticky */}
+      <div className="sticky top-14 z-40 bg-zinc-950/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-3 mb-2 border-b border-zinc-800/60">
+      <div className="flex flex-wrap gap-2 mb-2.5">
         <input
           type="text"
           placeholder="Cerca filamento..."
@@ -197,6 +213,29 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           </button>
         </div>
       </div>
+
+      {/* Quick type pills */}
+      {tipi.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none mt-2">
+          <button
+            onClick={() => setParam("tipo", "")}
+            className={`shrink-0 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${!tipo ? "bg-zinc-700 border-zinc-500 text-zinc-100" : "border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"}`}
+          >
+            Tutti
+          </button>
+          {tipi.map((t) => (
+            <button
+              key={t}
+              onClick={() => setParam("tipo", tipo === t ? "" : t)}
+              data-active={tipo === t ? "" : undefined}
+              className={`shrink-0 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${TYPE_PILL[t] ?? "border-zinc-700/60 text-zinc-400 data-[active]:bg-zinc-800 data-[active]:border-zinc-500"}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+      </div>{/* end sticky */}
 
       {/* Active filter chips */}
       {hasFilters && (

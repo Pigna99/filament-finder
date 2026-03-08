@@ -56,7 +56,7 @@ export default function FilamentoTable({ filamenti }: Props) {
             <div className="flex items-center gap-2">
               {f.link_immagine && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.link_immagine} alt="" className="w-8 h-8 object-contain rounded bg-zinc-800 p-0.5 shrink-0" />
+                <img src={f.link_immagine} alt="" className="w-8 h-8 object-contain rounded bg-zinc-800 p-0.5 shrink-0" loading="lazy" />
               )}
               <div>
                 <div className="flex items-center gap-1.5 mb-0.5">
@@ -197,7 +197,7 @@ export default function FilamentoTable({ filamenti }: Props) {
             >
               {f.link_immagine ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.link_immagine} alt="" className="w-10 h-10 object-contain rounded bg-zinc-800 p-0.5 shrink-0" />
+                <img src={f.link_immagine} alt="" className="w-10 h-10 object-contain rounded bg-zinc-800 p-0.5 shrink-0" loading="lazy" />
               ) : f.colore_hex ? (
                 <span className="w-10 h-10 rounded-full border-2 border-zinc-700 shrink-0 flex items-center justify-center" style={{ backgroundColor: f.colore_hex }}>
                   <span className="w-3 h-3 rounded-full bg-zinc-900/80" />

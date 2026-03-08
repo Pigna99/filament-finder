@@ -106,12 +106,19 @@ export async function getCatalogo(filters: CatalogoFilters = {}): Promise<Filame
 // Cerca prima per slug generato (in-memory), poi per ID come fallback
 // ----------------------------------------------------------------
 export async function getFilamentoBySlug(slug: string): Promise<FilamentoRow | null> {
-  const rows = await sql<FilamentoRow[]>`SELECT * FROM v_filament_full`;
+  // Extract peso_g from slug suffix (e.g. "bambu-pla-matte-black-1000g" → 1000)
+  // to narrow the query significantly instead of loading all rows
+  const pesoMatch = slug.match(/-(\d+)g$/);
+  const pesoG = pesoMatch ? parseInt(pesoMatch[1]) : null;
+
+  const rows = pesoG
+    ? await sql<FilamentoRow[]>`SELECT * FROM v_filament_full WHERE peso_g = ${pesoG}`
+    : await sql<FilamentoRow[]>`SELECT * FROM v_filament_full`;
+
   return (
     rows.find(
       (r) =>
-        slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g) ===
-        slug
+        slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g) === slug
     ) ?? null
   );
 }
