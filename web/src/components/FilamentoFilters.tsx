@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { FilamentoRow } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
@@ -17,15 +18,35 @@ const sel =
   "bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500";
 
 export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: Props) {
-  const [q, setQ] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [brand, setBrand] = useState("");
-  const [diametro, setDiametro] = useState("");
-  const [famiglia, setFamiglia] = useState("");
-  const [peso, setPeso] = useState("");
-  const [prezzoMax, setPrezzoMax] = useState("");
-  const [sortBy, setSortBy] = useState<"prezzo" | "brand" | "tipo">("prezzo");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
+  // Leggi i filtri dai query param (con default)
+  const q        = params.get("q")        ?? "";
+  const tipo     = params.get("tipo")     ?? "";
+  const brand    = params.get("brand")    ?? "";
+  const diametro = params.get("diametro") ?? "";
+  const famiglia = params.get("colore")   ?? "";
+  const peso     = params.get("peso")     ?? "";
+  const prezzoMax= params.get("maxkg")    ?? "";
+  const sortBy   = (params.get("sort")   ?? "prezzo") as "prezzo" | "brand" | "tipo";
+  const view     = (params.get("view")   ?? "grid")   as "grid" | "table";
+
+  // Helper: aggiorna un singolo param mantenendo gli altri
+  const setParam = useCallback(
+    (key: string, value: string) => {
+      const next = new URLSearchParams(params.toString());
+      if (value) next.set(key, value);
+      else next.delete(key);
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    },
+    [params, pathname, router]
+  );
+
+  const resetAll = useCallback(() => {
+    router.replace(pathname, { scroll: false });
+  }, [pathname, router]);
 
   const filtered = useMemo(() => {
     const result = filamenti.filter((f) => {
@@ -56,6 +77,8 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
     });
   }, [filamenti, q, tipo, brand, diametro, famiglia, peso, prezzoMax, sortBy]);
 
+  const hasFilters = q || tipo || brand || diametro || famiglia || peso || prezzoMax;
+
   return (
     <div>
       {/* Filtri */}
@@ -64,23 +87,23 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           type="text"
           placeholder="Cerca filamento..."
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => setParam("q", e.target.value)}
           className={`${sel} w-44`}
         />
-        <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={sel}>
+        <select value={tipo} onChange={(e) => setParam("tipo", e.target.value)} className={sel}>
           <option value="">Tutti i tipi</option>
           {tipi.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select value={brand} onChange={(e) => setBrand(e.target.value)} className={sel}>
+        <select value={brand} onChange={(e) => setParam("brand", e.target.value)} className={sel}>
           <option value="">Tutti i brand</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}
         </select>
-        <select value={diametro} onChange={(e) => setDiametro(e.target.value)} className={sel}>
+        <select value={diametro} onChange={(e) => setParam("diametro", e.target.value)} className={sel}>
           <option value="">Tutti i diametri</option>
           <option value="1.75">1.75 mm</option>
           <option value="2.85">2.85 mm</option>
         </select>
-        <select value={peso} onChange={(e) => setPeso(e.target.value)} className={sel}>
+        <select value={peso} onChange={(e) => setParam("peso", e.target.value)} className={sel}>
           <option value="">Tutti i pesi</option>
           <option value="250">250 g</option>
           <option value="500">500 g</option>
@@ -90,7 +113,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           <option value="5000">5 kg</option>
           <option value="10000">10 kg</option>
         </select>
-        <select value={famiglia} onChange={(e) => setFamiglia(e.target.value)} className={sel}>
+        <select value={famiglia} onChange={(e) => setParam("colore", e.target.value)} className={sel}>
           <option value="">Tutti i colori</option>
           {famiglie.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -98,17 +121,17 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           type="number"
           placeholder="Max €/kg"
           value={prezzoMax}
-          onChange={(e) => setPrezzoMax(e.target.value)}
+          onChange={(e) => setParam("maxkg", e.target.value)}
           className={`${sel} w-28`}
         />
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={sel}>
+        <select value={sortBy} onChange={(e) => setParam("sort", e.target.value)} className={sel}>
           <option value="prezzo">€/kg ↑</option>
           <option value="brand">Brand A-Z</option>
           <option value="tipo">Tipo A-Z</option>
         </select>
-        {(q || tipo || brand || diametro || famiglia || peso || prezzoMax) && (
+        {hasFilters && (
           <button
-            onClick={() => { setQ(""); setTipo(""); setBrand(""); setDiametro(""); setFamiglia(""); setPeso(""); setPrezzoMax(""); }}
+            onClick={resetAll}
             className="text-zinc-500 hover:text-zinc-300 text-sm px-2 transition-colors"
           >
             ✕ Reset
@@ -118,7 +141,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
         {/* Toggle vista griglia / tabella */}
         <div className="ml-auto flex items-center gap-1">
           <button
-            onClick={() => setView("grid")}
+            onClick={() => setParam("view", "grid")}
             title="Vista griglia"
             className={`p-1.5 rounded-lg transition-colors ${view === "grid" ? "bg-emerald-600 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"}`}
           >
@@ -128,7 +151,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
             </svg>
           </button>
           <button
-            onClick={() => setView("table")}
+            onClick={() => setParam("view", "table")}
             title="Vista tabella"
             className={`p-1.5 rounded-lg transition-colors ${view === "table" ? "bg-emerald-600 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"}`}
           >

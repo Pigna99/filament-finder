@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -48,12 +49,14 @@ export default async function CatalogoPage({
             </p>
           </div>
         ) : (
-          <FilamentoFilters
-            filamenti={filamenti}
-            tipi={tipi}
-            brands={brands}
-            famiglie={famiglie}
-          />
+          <Suspense>
+            <FilamentoFilters
+              filamenti={filamenti}
+              tipi={tipi}
+              brands={brands}
+              famiglie={famiglie}
+            />
+          </Suspense>
         )}
       </main>
       <Footer />
