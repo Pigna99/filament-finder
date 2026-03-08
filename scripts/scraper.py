@@ -558,9 +558,18 @@ def process_shopify_product(
     # Immagine principale del prodotto
     images = product.get("images", [])
     main_image = images[0]["src"] if images else None
+    imgs_by_id = {img["id"]: img["src"] for img in images}
+
+    # Se il prodotto ha più varianti colore diverse e nessuna ha image_id,
+    # significa che l'immagine principale è generica (es. solo un colore).
+    # In quel caso NON assegniamo l'immagine ai filamenti — mostriamo lo swatch colore.
+    variants_list = product.get("variants", [])
+    has_variant_images = any(v.get("image_id") for v in variants_list)
+    multi_color = len(variants_list) > 1
+    use_main_image_fallback = not multi_color or has_variant_images
 
     count = 0
-    for variant in product.get("variants", []):
+    for variant in variants_list:
         v_title = variant.get("title", "Default Title")
         price_str = variant.get("price", "0")
         compare_price_str = variant.get("compare_at_price")
@@ -605,14 +614,15 @@ def process_shopify_product(
 
         colore, colore_hex, colore_famiglia = detect_color(color_raw)
 
-        # Immagine specifica variante (se disponibile)
+        # Immagine specifica variante (se disponibile), altrimenti principale
+        # solo se non è un prodotto multi-colore senza immagini per variante
         img_id = variant.get("image_id")
-        var_image = main_image
-        if img_id:
-            for img in images:
-                if img.get("id") == img_id:
-                    var_image = img["src"]
-                    break
+        if img_id and img_id in imgs_by_id:
+            var_image = imgs_by_id[img_id]
+        elif use_main_image_fallback:
+            var_image = main_image
+        else:
+            var_image = None  # lascia il color swatch
 
         # Link prodotto
         handle = product.get("handle", "")

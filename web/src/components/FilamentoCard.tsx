@@ -31,10 +31,20 @@ export default function FilamentoCard({ f }: Props) {
             className="w-full h-full object-contain p-3"
           />
         ) : (
-          <div
-            className="w-16 h-16 rounded-full border-2 border-zinc-700"
-            style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
-          />
+          /* Swatch colore stilizzato come bobina */
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="w-20 h-20 rounded-full border-4 border-zinc-900 shadow-lg ring-2 ring-zinc-700"
+              style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
+            >
+              <div className="w-full h-full rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-zinc-900/80" />
+              </div>
+            </div>
+            {f.colore && (
+              <span className="text-xs text-zinc-500">{f.colore}</span>
+            )}
+          </div>
         )}
         {/* Badge tipo */}
         <span className="absolute top-2 left-2 bg-zinc-950/80 text-emerald-400 text-xs font-mono px-2 py-0.5 rounded-full">
@@ -76,8 +86,8 @@ export default function FilamentoCard({ f }: Props) {
           )}
         </div>
 
-        {/* Swatch colore */}
-        {f.colore_hex && (
+        {/* Swatch colore inline (solo se c'è immagine prodotto) */}
+        {f.link_immagine && f.colore_hex && (
           <div className="mt-2 flex items-center gap-1.5">
             <span
               className="w-3 h-3 rounded-full border border-zinc-700 inline-block"
