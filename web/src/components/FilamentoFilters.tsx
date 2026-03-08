@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { FilamentoRow } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
@@ -34,6 +34,15 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
   const sortBy   = (params.get("sort")   ?? "prezzo") as SortKey;
   const view     = (params.get("view")   ?? "grid")   as "grid" | "table";
 
+  // Local state for debounced search
+  const [localQ, setLocalQ] = useState(q);
+
+  // Sync when URL param changes (e.g. reset)
+  useEffect(() => {
+    setLocalQ(q);
+  }, [q]);
+
+  // Debounced URL update
   const setParam = useCallback(
     (key: string, value: string) => {
       const next = new URLSearchParams(params.toString());
@@ -43,6 +52,11 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
     },
     [params, pathname, router]
   );
+
+  useEffect(() => {
+    const t = setTimeout(() => setParam("q", localQ), 300);
+    return () => clearTimeout(t);
+  }, [localQ, setParam]);
 
   const resetAll = useCallback(() => {
     router.replace(pathname, { scroll: false });
@@ -90,6 +104,11 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
 
   const hasFilters = q || tipo || brand || diametro || famiglia || peso || prezzoMax;
 
+  const formatPeso = (p: string) => {
+    const n = Number(p);
+    return n >= 1000 ? `${n / 1000}kg` : `${n}g`;
+  };
+
   return (
     <div>
       {/* Filtri */}
@@ -97,8 +116,8 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
         <input
           type="text"
           placeholder="Cerca filamento..."
-          value={q}
-          onChange={(e) => setParam("q", e.target.value)}
+          value={localQ}
+          onChange={(e) => setLocalQ(e.target.value)}
           className={`${sel} w-44`}
         />
         <select value={tipo} onChange={(e) => setParam("tipo", e.target.value)} className={sel}>
@@ -178,6 +197,68 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           </button>
         </div>
       </div>
+
+      {/* Active filter chips */}
+      {hasFilters && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {q && (
+            <button
+              onClick={() => { setLocalQ(""); setParam("q", ""); }}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              &ldquo;{q}&rdquo; <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {tipo && (
+            <button
+              onClick={() => setParam("tipo", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Tipo: {tipo} <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {brand && (
+            <button
+              onClick={() => setParam("brand", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Brand: {brand} <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {diametro && (
+            <button
+              onClick={() => setParam("diametro", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              ⌀ {diametro}mm <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {famiglia && (
+            <button
+              onClick={() => setParam("colore", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Colore: {famiglia} <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {peso && (
+            <button
+              onClick={() => setParam("peso", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              {formatPeso(peso)} <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {prezzoMax && (
+            <button
+              onClick={() => setParam("maxkg", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Max €{prezzoMax}/kg <span className="text-zinc-500">×</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Conteggio */}
       <p className="text-sm text-zinc-500 mb-4">

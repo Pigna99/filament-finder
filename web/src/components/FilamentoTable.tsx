@@ -18,6 +18,21 @@ interface Props {
   filamenti: FilamentoRow[];
 }
 
+const TYPE_BADGE: Record<string, string> = {
+  "PLA":     "bg-emerald-950/80 text-emerald-400 border border-emerald-800/40",
+  "PLA-CF":  "bg-teal-950/80 text-teal-300 border border-teal-700/40",
+  "PETG":    "bg-blue-950/80 text-blue-400 border border-blue-800/40",
+  "PETG-CF": "bg-blue-950/80 text-blue-300 border border-blue-700/40",
+  "ABS":     "bg-orange-950/80 text-orange-400 border border-orange-800/40",
+  "ASA":     "bg-amber-950/80 text-amber-400 border border-amber-800/40",
+  "TPU":     "bg-purple-950/80 text-purple-400 border border-purple-800/40",
+  "NYLON":   "bg-cyan-950/80 text-cyan-400 border border-cyan-800/40",
+  "PA-CF":   "bg-cyan-950/80 text-cyan-300 border border-cyan-700/40",
+  "PC":      "bg-red-950/80 text-red-400 border border-red-800/40",
+  "HIPS":    "bg-zinc-800/80 text-zinc-300 border border-zinc-700/40",
+  "PVA":     "bg-pink-950/80 text-pink-400 border border-pink-800/40",
+};
+
 const col = createColumnHelper<FilamentoRow>();
 
 const PAGE_SIZE = 25;
@@ -44,8 +59,13 @@ export default function FilamentoTable({ filamenti }: Props) {
                 <img src={f.link_immagine} alt="" className="w-8 h-8 object-contain rounded bg-zinc-800 p-0.5 shrink-0" />
               )}
               <div>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className={`text-xs font-mono px-1.5 py-0.5 rounded-full ${TYPE_BADGE[f.tipo] ?? "bg-zinc-800/80 text-zinc-400 border border-zinc-700/40"}`}>
+                    {f.tipo}
+                  </span>
+                </div>
                 <span className="text-zinc-100 font-medium">{f.brand}</span>
-                <span className="text-zinc-500"> {f.tipo} {f.variante}</span>
+                <span className="text-zinc-500"> {f.variante}</span>
               </div>
             </div>
           );
@@ -186,7 +206,12 @@ export default function FilamentoTable({ filamenti }: Props) {
                 <span className="w-10 h-10 rounded-full bg-zinc-800 shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-zinc-500">{f.brand} · {f.tipo} {f.variante}</p>
+                <p className="text-xs text-zinc-500 flex items-center gap-1.5 flex-wrap">
+                  <span className={`font-mono px-1.5 py-0.5 rounded-full ${TYPE_BADGE[f.tipo] ?? "bg-zinc-800/80 text-zinc-400 border border-zinc-700/40"}`}>
+                    {f.tipo}
+                  </span>
+                  {f.brand} {f.variante}
+                </p>
                 <p className="text-sm text-zinc-100 truncate">{f.colore ?? "—"}</p>
                 <p className="text-xs text-zinc-500">{f.peso_g}g</p>
               </div>

@@ -6,6 +6,18 @@ import { getTopFilamenti } from "@/lib/filamenti";
 
 export const revalidate = 900;
 
+const TYPE_BADGE: Record<string, string> = {
+  "PLA":     "bg-emerald-950/90 text-emerald-400 border border-emerald-800/50",
+  "PLA-CF":  "bg-teal-950/90 text-teal-300 border border-teal-700/50",
+  "PETG":    "bg-blue-950/90 text-blue-400 border border-blue-800/50",
+  "PETG-CF": "bg-blue-950/90 text-blue-300 border border-blue-700/50",
+  "ABS":     "bg-orange-950/90 text-orange-400 border border-orange-800/50",
+  "ASA":     "bg-amber-950/90 text-amber-400 border border-amber-800/50",
+  "TPU":     "bg-purple-950/90 text-purple-400 border border-purple-800/50",
+  "NYLON":   "bg-cyan-950/90 text-cyan-400 border border-cyan-800/50",
+  "PC":      "bg-red-950/90 text-red-400 border border-red-800/50",
+};
+
 export default async function HomePage() {
   const top = await getTopFilamenti(6).catch(() => []);
 
@@ -65,22 +77,23 @@ export default async function HomePage() {
           <h2 className="text-xl font-bold text-zinc-100 mb-6">Esplora per tipo</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
-              { tipo: "PLA",   emoji: "🟢", desc: "Facile da stampare, biodegradabile" },
-              { tipo: "PETG",  emoji: "🔵", desc: "Resistente e flessibile" },
-              { tipo: "TPU",   emoji: "🟡", desc: "Flessibile, elastico" },
-              { tipo: "ABS",   emoji: "🔴", desc: "Alta resistenza termica" },
-              { tipo: "ASA",   emoji: "🟠", desc: "Resistente ai raggi UV" },
-              { tipo: "NYLON", emoji: "⚪", desc: "Massima resistenza meccanica" },
-              { tipo: "PC",    emoji: "🔷", desc: "Policarbonato, uso tecnico" },
-              { tipo: "PLA-CF",emoji: "⬛", desc: "Con fibra di carbonio" },
-            ].map(({ tipo, emoji, desc }) => (
+              { tipo: "PLA",    desc: "Facile da stampare, biodegradabile" },
+              { tipo: "PETG",   desc: "Resistente e flessibile" },
+              { tipo: "TPU",    desc: "Flessibile, elastico" },
+              { tipo: "ABS",    desc: "Alta resistenza termica" },
+              { tipo: "ASA",    desc: "Resistente ai raggi UV" },
+              { tipo: "NYLON",  desc: "Massima resistenza meccanica" },
+              { tipo: "PC",     desc: "Policarbonato, uso tecnico" },
+              { tipo: "PLA-CF", desc: "Con fibra di carbonio" },
+            ].map(({ tipo, desc }) => (
               <Link
                 key={tipo}
                 href={`/catalogo?tipo=${tipo}`}
                 className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-emerald-500/50 transition-all hover:shadow-lg hover:shadow-emerald-500/5"
               >
-                <div className="text-2xl mb-2">{emoji}</div>
-                <div className="font-mono font-bold text-emerald-400 text-sm">{tipo}</div>
+                <div className={`inline-flex items-center text-sm font-mono font-bold px-2.5 py-1 rounded-full mb-3 ${TYPE_BADGE[tipo] ?? "bg-zinc-800 text-zinc-400 border border-zinc-700"}`}>
+                  {tipo}
+                </div>
                 <div className="text-xs text-zinc-500 mt-1">{desc}</div>
               </Link>
             ))}

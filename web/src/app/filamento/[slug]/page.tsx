@@ -28,6 +28,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const DIFFICOLTA_LABEL = ["", "Molto facile", "Facile", "Medio", "Difficile", "Molto difficile"];
 
+function timeAgo(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const h = Math.floor(diff / 3_600_000);
+  if (h < 1) return "< 1h fa";
+  if (h < 24) return `${h}h fa`;
+  const d = Math.floor(h / 24);
+  return `${d}gg fa`;
+}
+
 export default async function FilamentoPage({ params }: Props) {
   const { slug } = await params;
 
@@ -45,6 +54,11 @@ export default async function FilamentoPage({ params }: Props) {
     rilevato_at: p.rilevato_at instanceof Date ? p.rilevato_at.toISOString() : String(p.rilevato_at),
     prezzo_finale: Number(p.prezzo_finale),
     prezzo_per_kg: p.prezzo_per_kg ? Number(p.prezzo_per_kg) : null,
+  }));
+
+  const prezziShopSerializable = prezziShop.map((p) => ({
+    ...p,
+    rilevato_at: p.rilevato_at instanceof Date ? p.rilevato_at.toISOString() : String(p.rilevato_at),
   }));
 
   const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
@@ -176,11 +190,11 @@ export default async function FilamentoPage({ params }: Props) {
               <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">
                 Prezzi attuali per shop
               </h2>
-              {prezziShop.length === 0 ? (
+              {prezziShopSerializable.length === 0 ? (
                 <p className="text-zinc-500 text-sm">Nessun prezzo disponibile.</p>
               ) : (
                 <div className="space-y-3">
-                  {prezziShop.map((p, i) => {
+                  {prezziShopSerializable.map((p, i) => {
                     const disponibile = p.disponibile;
                     const isBest = disponibile && i === 0;
                     return (
@@ -194,6 +208,9 @@ export default async function FilamentoPage({ params }: Props) {
                             {isBest && <span className="text-xs bg-emerald-600 text-white px-1.5 rounded">migliore</span>}
                             {!disponibile && <span className="text-xs bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">Non disponibile</span>}
                             {p.paese && <span className="text-xs text-zinc-600">{p.paese}</span>}
+                            {p.rilevato_at && (
+                              <span className="text-xs text-zinc-600">{timeAgo(p.rilevato_at as string)}</span>
+                            )}
                           </div>
                           {p.codice_sconto && disponibile && (
                             <span className="text-xs text-amber-400">Coupon: {p.codice_sconto}</span>
