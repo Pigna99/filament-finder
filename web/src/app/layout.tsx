@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: "Filament Finder",
     locale: "it_IT",
-    images: [{ url: "/icon-512.png", width: 512, height: 512 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
 };
 
