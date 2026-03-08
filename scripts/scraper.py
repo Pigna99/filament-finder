@@ -810,7 +810,15 @@ def fetch_esun_product(url: str) -> Optional[dict]:
                 if color_opt:
                     for color_name, cdata in color_opt.get("Data", {}).items():
                         img_path = cdata.get("main", "")
-                        img_url = (ESUN_CDN + img_path) if img_path else main_image
+                        if img_path:
+                            # img_path = "/u_file/YYYY/MM/products/xxx.jpg"
+                            # CDN base termina già con /UPBC810, quindi strip "/u_file/"
+                            suffix = img_path.lstrip("/")
+                            if suffix.startswith("u_file/"):
+                                suffix = suffix[len("u_file/"):]
+                            img_url = f"{ESUN_CDN}/{suffix}"
+                        else:
+                            img_url = main_image
                         colors.append({"name": color_name, "image": img_url})
         except Exception as e:
             log.debug(f"  Errore parse product_data: {e}")
