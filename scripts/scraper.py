@@ -1010,11 +1010,66 @@ def scrape_esun(db: DB):
 # ── Scraper Bambu Lab EU ──────────────────────────────────────────────────────
 
 
+# Slug-keyword di accessori Bambu che contengono "filament" ma non sono filamenti
+BAMBU_ACCESSORY_SLUGS = [
+    "sensor", "buffer", "cutter", "hub", "funnel", "retraction",
+    "adapter", "swatch", "guide", "protection", "idler", "pad",
+    "beginner", "pack", "replacement", "assembly", "board", "connection",
+]
+
+
+def fetch_bambu_product_handles() -> list[str]:
+    """
+    Scarica la sitemap Bambu EU e ritorna gli handle prodotto filamento
+    (deduplicati, esclusi gli accessori).
+    """
+    BAMBU_BASE = "https://eu.store.bambulab.com"
+    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    handles: dict[str, str] = {}  # handle -> full url
+
+    sitemap_list: list[str] = []
+    try:
+        r = requests.get(f"{BAMBU_BASE}/sitemap.xml", headers=HEADERS, timeout=15)
+        if r.ok:
+            root = ET.fromstring(r.text)
+            sitemap_list = [
+                loc.text for loc in root.findall(".//sm:loc", ns)
+                if loc.text and "sitemap_products" in loc.text
+            ]
+    except Exception:
+        pass
+    if not sitemap_list:
+        sitemap_list = [f"{BAMBU_BASE}/sitemap_products_{i}.xml" for i in range(1, 4)]
+
+    for sm_url in sitemap_list:
+        try:
+            r = requests.get(sm_url, headers=HEADERS, timeout=15)
+            if not r.ok:
+                break
+            root = ET.fromstring(r.text)
+            for loc in root.findall(".//sm:loc", ns):
+                if not loc.text or "/products/" not in loc.text:
+                    continue
+                handle = loc.text.split("/products/")[-1].lower().rstrip("/")
+                if "filament" not in handle:
+                    continue
+                if any(kw in handle for kw in BAMBU_ACCESSORY_SLUGS):
+                    continue
+                if handle not in handles:
+                    handles[handle] = loc.text
+        except Exception as e:
+            log.debug(f"  Sitemap {sm_url}: {e}")
+            break
+
+    return list(handles.values())
+
+
 def scrape_bambu(db: DB):
     """
     Scraper Bambu Lab EU.
-    Usa la Shopify API (/products.json) per ottenere varianti per colore e peso,
-    poi processa ogni prodotto con process_shopify_product.
+    Usa la sitemap per trovare gli handle prodotto, poi scarica ogni
+    /products/{handle}.json (Shopify) per ottenere varianti per colore/peso.
+    Il bulk /products.json è disabilitato sul loro store.
     """
     log.info("=== BAMBU LAB EU ===")
     brand_id = db.get_brand_id("Bambu Lab")
@@ -1024,29 +1079,37 @@ def scrape_bambu(db: DB):
         return
 
     log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
-
     BAMBU_EU = "https://eu.store.bambulab.com"
 
-    # Prima prova la collection "filament", poi tutto lo store come fallback
-    products_raw = fetch_shopify_products(BAMBU_EU, "filament")
-    if not products_raw:
-        log.info("  Collection 'filament' vuota, provo tutti i prodotti...")
-        products_raw = fetch_shopify_products(BAMBU_EU)
-
-    log.info(f"Trovati {len(products_raw)} prodotti totali")
-
-    # Filtra solo prodotti filamento
-    filament_products = [p for p in products_raw if is_filament_product(p)]
-    log.info(f"Filtrati {len(filament_products)} filamenti da processare")
+    product_urls = fetch_bambu_product_handles()
+    log.info(f"Trovati {len(product_urls)} URL prodotti filamento da processare")
 
     total = 0
-    for p in filament_products:
+    for url in product_urls:
+        handle = url.split("/products/")[-1].lower().rstrip("/")
+        try:
+            r = requests.get(f"{BAMBU_EU}/products/{handle}.json", headers=HEADERS, timeout=20)
+            if not r.ok:
+                log.debug(f"  Skip HTTP {r.status_code}: {handle}")
+                time.sleep(1)
+                continue
+            product = r.json().get("product", {})
+        except Exception as e:
+            log.debug(f"  Errore fetch {handle}: {e}")
+            time.sleep(1)
+            continue
+
+        if not is_filament_product(product):
+            log.debug(f"  Skip non-filamento: {handle}")
+            time.sleep(0.5)
+            continue
+
         n = process_shopify_product(
-            p, brand_id, shop_id, db, BAMBU_EU,
+            product, brand_id, shop_id, db, BAMBU_EU,
             default_weight_g=1000,
         )
         total += n
-        time.sleep(0.3)  # rate limiting gentile
+        time.sleep(1)  # Bambu ha rate limiting aggressivo
 
     log.info(f"Bambu Lab: {total} varianti processate")
 
