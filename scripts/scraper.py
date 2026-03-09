@@ -902,6 +902,7 @@ def scrape_esun(db: DB):
         return
 
     log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
+    _processed_pairs: set[tuple[int, int]] = set()  # (fil_id, shop_id) già processati in questo run
 
     # 1. Raccogli URL prodotti dalla collection filamento
     try:
@@ -964,6 +965,11 @@ def scrape_esun(db: DB):
             )
             if fil_id < 0:
                 continue
+            pair = (fil_id, shop_id)
+            if pair in _processed_pairs:
+                log.debug(f"  Skip duplicato (fil_id={fil_id})")
+                continue
+            _processed_pairs.add(pair)
             fs_id = db.get_or_create_filament_shop(fil_id, shop_id, affiliate_url, affiliazione=use_awin)
             if fs_id >= 0:
                 db.insert_price(fs_id, prezzo, None, available)
@@ -980,6 +986,11 @@ def scrape_esun(db: DB):
                 )
                 if fil_id < 0:
                     continue
+                pair = (fil_id, shop_id)
+                if pair in _processed_pairs:
+                    log.debug(f"  Skip duplicato colore (fil_id={fil_id})")
+                    continue
+                _processed_pairs.add(pair)
                 fs_id = db.get_or_create_filament_shop(fil_id, shop_id, affiliate_url, affiliazione=use_awin)
                 if fs_id >= 0:
                     db.insert_price(fs_id, prezzo, None, available)
