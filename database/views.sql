@@ -96,6 +96,7 @@ SELECT
     f.humidity_sensitive,
     f.rating_medio,
     f.num_recensioni,
+    f.is_refill,
     f.created_at,
     -- Brand
     b.id                AS id_brand,

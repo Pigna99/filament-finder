@@ -66,6 +66,12 @@ export default function FilamentoCard({ f }: Props) {
         <span className={`absolute top-2 left-2 text-xs font-mono px-2 py-0.5 rounded-full ${TYPE_BADGE[f.tipo] ?? "bg-zinc-950/80 text-zinc-400 border border-zinc-700/50"}`}>
           {f.tipo}
         </span>
+        {/* Badge refill */}
+        {f.is_refill && (
+          <span className="absolute top-2 right-2 text-xs bg-amber-900/80 text-amber-300 border border-amber-700/50 px-1.5 py-0.5 rounded-full">
+            Refill
+          </span>
+        )}
       </div>
 
       <div className="p-4">

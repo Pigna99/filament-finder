@@ -13,6 +13,7 @@ export interface FilamentoRow {
   link_brand: string | null;
   densita_g_cm3: number | null;
   humidity_sensitive: boolean;
+  is_refill: boolean;
   rating_medio: number | null;
   num_recensioni: number;
   // Brand
@@ -80,6 +81,7 @@ export interface CatalogoFilters {
   colore_famiglia?: string;
   prezzo_max?: number;
   q?: string;
+  refill?: "yes" | "no"; // "yes" = solo refill, "no" = solo con bobina
 }
 
 // ----------------------------------------------------------------
@@ -96,6 +98,7 @@ export async function getCatalogo(filters: CatalogoFilters = {}): Promise<Filame
       ${filters.colore_famiglia ? sql`AND colore_famiglia = ${filters.colore_famiglia}` : sql``}
       ${filters.prezzo_max ? sql`AND (prezzo_per_kg_min IS NULL OR prezzo_per_kg_min <= ${filters.prezzo_max})` : sql``}
       ${filters.q ? sql`AND (colore ILIKE ${"%" + filters.q + "%"} OR brand ILIKE ${"%" + filters.q + "%"})` : sql``}
+      ${filters.refill === "yes" ? sql`AND is_refill = TRUE` : filters.refill === "no" ? sql`AND is_refill = FALSE` : sql``}
     ORDER BY prezzo_per_kg_min ASC NULLS LAST
   `;
   return rows;
@@ -167,6 +170,41 @@ export async function getTopFilamenti(limit = 6): Promise<FilamentoRow[]> {
     ORDER BY prezzo_per_kg_min ASC
     LIMIT ${limit}
   `;
+}
+
+// ----------------------------------------------------------------
+// getVariantiColore — altri colori dello stesso modello (stesso brand+tipo+variante+peso)
+// ----------------------------------------------------------------
+export interface VarianteColore {
+  id: number;
+  colore: string | null;
+  colore_hex: string | null;
+  slug: string;
+}
+
+export async function getVariantiColore(
+  id_brand: number,
+  id_type: number,
+  id_variant: number,
+  peso_g: number,
+  current_id: number
+): Promise<VarianteColore[]> {
+  const rows = await sql<FilamentoRow[]>`
+    SELECT *
+    FROM v_filament_full
+    WHERE id_brand  = ${id_brand}
+      AND id_type   = ${id_type}
+      AND id_variant = ${id_variant}
+      AND peso_g    = ${peso_g}
+      AND id        != ${current_id}
+    ORDER BY colore ASC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    colore: r.colore,
+    colore_hex: r.colore_hex,
+    slug: slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g),
+  }));
 }
 
 // ----------------------------------------------------------------

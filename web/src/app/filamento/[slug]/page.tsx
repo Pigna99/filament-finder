@@ -8,6 +8,7 @@ import {
   getPrezziShop,
   getStoricoPrezzi,
   getTags,
+  getVariantiColore,
 } from "@/lib/filamenti";
 
 export const revalidate = 900;
@@ -43,10 +44,11 @@ export default async function FilamentoPage({ params }: Props) {
   const f = await getFilamentoBySlug(slug).catch(() => null);
   if (!f) notFound();
 
-  const [prezziShop, storico, tags] = await Promise.all([
+  const [prezziShop, storico, tags, variantiColore] = await Promise.all([
     getPrezziShop(f.id).catch(() => []),
     getStoricoPrezzi(f.id).catch(() => []),
     getTags(f.id).catch(() => []),
+    getVariantiColore(f.id_brand, f.id_type, f.id_variant, f.peso_g, f.id).catch(() => []),
   ]);
 
   const storicoSerializable = storico.map((p) => ({
@@ -125,6 +127,11 @@ export default async function FilamentoPage({ params }: Props) {
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="bg-zinc-800 text-emerald-400 text-xs font-mono px-3 py-1 rounded-full">{f.tipo}</span>
               <span className="bg-zinc-800 text-zinc-300 text-xs px-3 py-1 rounded-full">{f.variante}</span>
+              {f.is_refill && (
+                <span className="bg-amber-900/60 text-amber-300 border border-amber-700/50 text-xs px-3 py-1 rounded-full">
+                  Refill — senza bobina
+                </span>
+              )}
               {tags.map(t => (
                 <span key={t.id} className="bg-zinc-800 text-zinc-500 text-xs px-2 py-1 rounded-full" title={t.descrizione ?? ""}>
                   {t.nome}
@@ -137,9 +144,34 @@ export default async function FilamentoPage({ params }: Props) {
               {f.brand} {f.tipo} {f.variante}
             </h1>
             {f.colore && (
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-2">
                 {f.colore_hex && <span className="w-4 h-4 rounded-full border border-zinc-700" style={{ backgroundColor: f.colore_hex }} />}
                 <span className="text-zinc-400">{f.colore}</span>
+              </div>
+            )}
+
+            {/* Selettore varianti colore */}
+            {variantiColore.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-zinc-600 mb-2">Altri colori disponibili</p>
+                <div className="flex flex-wrap gap-2">
+                  {/* Colore corrente (selezionato) */}
+                  <span
+                    title={f.colore ?? "Colore attuale"}
+                    className="w-8 h-8 rounded-full border-2 border-emerald-400 shadow-[0_0_0_2px_rgba(52,211,153,0.25)] cursor-default"
+                    style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
+                  />
+                  {/* Altri colori */}
+                  {variantiColore.map((v) => (
+                    <a
+                      key={v.id}
+                      href={`/filamento/${v.slug}`}
+                      title={v.colore ?? ""}
+                      className="w-8 h-8 rounded-full border-2 border-zinc-700 hover:border-zinc-400 transition-all hover:scale-110"
+                      style={{ backgroundColor: v.colore_hex ?? "#3f3f46" }}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -198,10 +230,17 @@ export default async function FilamentoPage({ params }: Props) {
                     const disponibile = p.disponibile;
                     const isBest = disponibile && i === 0;
                     return (
-                      <div key={p.id_filament_shop} className={`flex items-center justify-between p-3 rounded-xl ${
-                        !disponibile ? "bg-zinc-800/20 border border-zinc-800/30 opacity-60" :
-                        isBest ? "bg-emerald-950/50 border border-emerald-800/50" : "bg-zinc-800/50"
-                      }`}>
+                      <a
+                        key={p.id_filament_shop}
+                        href={p.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center justify-between p-3 rounded-xl transition-all group ${
+                          !disponibile ? "bg-zinc-800/20 border border-zinc-800/30 opacity-60 hover:opacity-80" :
+                          isBest ? "bg-emerald-950/50 border border-emerald-800/50 hover:border-emerald-600/70" :
+                          "bg-zinc-800/50 border border-transparent hover:border-zinc-700"
+                        }`}
+                      >
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-sm font-medium ${disponibile ? "text-zinc-100" : "text-zinc-500"}`}>{p.shop}</span>
@@ -235,16 +274,11 @@ export default async function FilamentoPage({ params }: Props) {
                           ) : (
                             <div className="text-xs text-zinc-600 mb-1">ultimo: € {Number(p.prezzo_finale).toFixed(2)}</div>
                           )}
-                          <a
-                            href={p.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`text-xs mt-1 inline-block ${disponibile ? "text-emerald-400 hover:underline" : "text-zinc-600 hover:text-zinc-400"}`}
-                          >
+                          <span className={`text-xs mt-1 inline-block group-hover:underline ${disponibile ? "text-emerald-400" : "text-zinc-600"}`}>
                             {disponibile ? "Vai al prodotto →" : "Visita pagina →"}
-                          </a>
+                          </span>
                         </div>
-                      </div>
+                      </a>
                     );
                   })}
                 </div>

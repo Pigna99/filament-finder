@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
 Filament Finder — Scraper prezzi
-Supporta: Elegoo (Shopify), SUNLU IT (Shopify), Bambu Lab EU (sitemap+HTML)
+Supporta: Elegoo (Shopify), SUNLU IT (Shopify), eSUN EU (HTML+JS), Bambu Lab EU (sitemap+HTML), 3DJake IT (sitemap+JSON-LD)
 
 Uso:
   python scraper.py                    # scrapa tutti gli shop
   python scraper.py --shop elegoo      # solo Elegoo
   python scraper.py --shop sunlu       # solo SUNLU
+  python scraper.py --shop esun        # solo eSUN EU
   python scraper.py --shop bambu       # solo Bambu Lab
+  python scraper.py --shop 3djake      # solo 3DJake IT
   python scraper.py --dry-run          # mostra cosa farebbe senza scrivere
 """
 
@@ -20,6 +22,7 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 import psycopg2
@@ -345,9 +348,10 @@ class DB:
         self, id_variant: int, id_brand: int,
         colore: Optional[str], colore_hex: Optional[str], colore_famiglia: Optional[str],
         peso_g: int, diametro_mm: float,
-        link_immagine: Optional[str], sku: Optional[str]
+        link_immagine: Optional[str], sku: Optional[str],
+        is_refill: bool = False,
     ) -> int:
-        key = f"filament:{id_variant}:{id_brand}:{colore}:{peso_g}:{diametro_mm}"
+        key = f"filament:{id_variant}:{id_brand}:{colore}:{peso_g}:{diametro_mm}:{is_refill}"
         if key in self._cache:
             return self._cache[key]
         with self.cur() as c:
@@ -355,8 +359,8 @@ class DB:
                 """SELECT id FROM filament
                    WHERE id_variant=%s AND id_brand=%s
                      AND (colore=%s OR (colore IS NULL AND %s IS NULL))
-                     AND peso_g=%s AND diametro_mm=%s""",
-                (id_variant, id_brand, colore, colore, peso_g, diametro_mm)
+                     AND peso_g=%s AND diametro_mm=%s AND is_refill=%s""",
+                (id_variant, id_brand, colore, colore, peso_g, diametro_mm, is_refill)
             )
             row = c.fetchone()
             if row:
@@ -370,20 +374,20 @@ class DB:
                 self._cache[key] = row["id"]
                 return row["id"]
             if self.dry_run:
-                log.info(f"  [DRY] CREATE filament: variant={id_variant} brand={id_brand} colore={colore} {peso_g}g")
+                log.info(f"  [DRY] CREATE filament: variant={id_variant} brand={id_brand} colore={colore} {peso_g}g refill={is_refill}")
                 return -1
             c.execute(
                 """INSERT INTO filament
                    (id_variant, id_brand, colore, colore_hex, colore_famiglia,
-                    peso_g, diametro_mm, link_immagine, sku)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                    peso_g, diametro_mm, link_immagine, sku, is_refill)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
                 (id_variant, id_brand, colore, colore_hex, colore_famiglia,
-                 peso_g, diametro_mm, link_immagine, sku)
+                 peso_g, diametro_mm, link_immagine, sku, is_refill)
             )
             fid = c.fetchone()["id"]
             self.conn.commit()
             self._cache[key] = fid
-            log.info(f"  CREATED filament id={fid}: variant={id_variant} brand={id_brand} {colore} {peso_g}g")
+            log.info(f"  CREATED filament id={fid}: variant={id_variant} brand={id_brand} {colore} {peso_g}g refill={is_refill}")
             return fid
 
     def get_or_create_filament_shop(
@@ -535,11 +539,18 @@ def parse_shopify_variant_title(variant_title: str) -> tuple[str, int]:
 
 def process_shopify_product(
     product: dict, brand_id: int, shop_id: int, db: DB, shop_url_prefix: str,
-    default_weight_g: int = 1000
+    default_weight_g: int = 1000, url_extra_params: str = "",
+    affiliazione: bool = False,
+    skip_variant_keywords: list[str] | None = None,
 ) -> int:
     """
     Processa un prodotto Shopify e inserisce filament + prezzi nel DB.
     Ritorna il numero di varianti processate.
+
+    skip_variant_keywords: lista di sottostrings (lowercase) nei titoli variante da saltare
+      (es. ["rfid"] per saltare varianti con chip RFID).
+    Varianti con "refill" nel titolo vengono automaticamente tracciate con is_refill=True.
+    Se due varianti mappano allo stesso (fil_id, shop_id), viene processata solo la prima.
     """
     title = product.get("title", "")
     combined = title + " " + " ".join(product.get("tags", []))
@@ -569,9 +580,22 @@ def process_shopify_product(
     multi_color = len(variants_list) > 1
     use_main_image_fallback = not multi_color or has_variant_images
 
+    _skip_kws = [k.lower() for k in (skip_variant_keywords or [])]
+    _processed_pairs: set[tuple[int, int]] = set()  # (fil_id, shop_id) già processati
+
     count = 0
     for variant in variants_list:
         v_title = variant.get("title", "Default Title")
+        v_lower = v_title.lower()
+
+        # Salta varianti con keyword esplicite (es. RFID)
+        if _skip_kws and any(kw in v_lower for kw in _skip_kws):
+            log.debug(f"  Skip variante per keyword: {v_title!r}")
+            continue
+
+        # Rileva se è un refill (senza bobina)
+        is_refill = any(kw in v_lower for kw in ["refill", "no spool", "cardboard spool"])
+
         price_str = variant.get("price", "0")
         compare_price_str = variant.get("compare_at_price")
         available = variant.get("available", True)
@@ -627,20 +651,27 @@ def process_shopify_product(
 
         # Link prodotto
         handle = product.get("handle", "")
-        product_url = f"{shop_url_prefix}/products/{handle}"
-        # Aggiungi variant ID per link diretto
-        product_url += f"?variant={variant['id']}"
+        product_url = f"{shop_url_prefix}/products/{handle}?variant={variant['id']}"
+        if url_extra_params:
+            product_url += f"&{url_extra_params}"
 
         # Crea/trova filamento
         fil_id = db.get_or_create_filament(
             variant_id, brand_id, colore, colore_hex, colore_famiglia,
-            peso_g, 1.75, var_image, sku
+            peso_g, 1.75, var_image, sku, is_refill=is_refill,
         )
         if fil_id < 0:
             continue
 
+        # Deduplicazione: salta se (fil_id, shop_id) già processato in questa run
+        pair = (fil_id, shop_id)
+        if pair in _processed_pairs:
+            log.debug(f"  Skip duplicato (fil_id={fil_id}, shop_id={shop_id}): {v_title!r}")
+            continue
+        _processed_pairs.add(pair)
+
         # Crea/trova filament_shop
-        fs_id = db.get_or_create_filament_shop(fil_id, shop_id, product_url)
+        fs_id = db.get_or_create_filament_shop(fil_id, shop_id, product_url, affiliazione=affiliazione)
         if fs_id < 0:
             continue
 
@@ -673,10 +704,14 @@ def scrape_elegoo(db: DB):
         detect_type(" ".join(p.get("tags",[]))) is not None]
     log.info(f"Filtrati {len(filament_products)} filamenti da processare")
 
+    # Salta varianti RFID (stesso filamento ma con chip NFC/RFID — prezzo più alto, stesso articolo)
+    ELEGOO_SKIP = ["rfid", " rfid ", "(rfid)", "with rfid"]
+
     total = 0
     for p in filament_products:
         n = process_shopify_product(p, brand_id, shop_id, db, ELEGOO_EU,
-                                    default_weight_g=1000)
+                                    default_weight_g=1000,
+                                    skip_variant_keywords=ELEGOO_SKIP)
         total += n
 
     log.info(f"Elegoo EU: {total} varianti processate")
@@ -735,11 +770,32 @@ def scrape_sunlu(db: DB):
         peso_nel_titolo = detect_weight(p.get("title", ""))
         n = process_shopify_product(
             p, brand_id, shop_id, db, "https://it.store.sunlu.com",
-            default_weight_g=peso_nel_titolo if peso_nel_titolo else 1000
+            default_weight_g=peso_nel_titolo if peso_nel_titolo else 1000,
+            url_extra_params=SUNLU_REF,
+            affiliazione=True,
         )
         total += n
 
     log.info(f"SUNLU: {total} varianti processate")
+
+
+# ── AWIN Affiliate config ─────────────────────────────────────────────────────
+
+# AWIN — credenziali personali
+AWIN_AFFILIATE_ID = "2803624"   # publisher ID
+ESUN_AWIN_MID     = "99267"     # eSUN EU merchant ID
+
+# SUNLU referral
+SUNLU_REF = "sca_ref=10792738.zNEEYsYDBi"
+
+
+def make_awin_link(merchant_id: str, dest_url: str) -> str:
+    """Genera link di tracking AWIN per il merchant specificato."""
+    encoded = quote(dest_url, safe="")
+    return (
+        f"https://www.awin1.com/cread.php"
+        f"?awinmid={merchant_id}&awinaffid={AWIN_AFFILIATE_ID}&ued={encoded}"
+    )
 
 
 # ── Scraper eSUN EU ────────────────────────────────────────────────────────────
@@ -893,6 +949,11 @@ def scrape_esun(db: DB):
         prezzo = data["price"]
         available = data["available"]
 
+        # Link affiliato AWIN (se configurato)
+        use_awin = (AWIN_AFFILIATE_ID != "TODO_YOUR_AFFILIATE_ID"
+                    and ESUN_AWIN_MID != "TODO_ESUN_MERCHANT_ID")
+        affiliate_url = make_awin_link(ESUN_AWIN_MID, url) if use_awin else url
+
         colors = data["colors"]
         if not colors:
             # Nessun colore rilevato: crea filamento generico
@@ -903,7 +964,7 @@ def scrape_esun(db: DB):
             )
             if fil_id < 0:
                 continue
-            fs_id = db.get_or_create_filament_shop(fil_id, shop_id, url)
+            fs_id = db.get_or_create_filament_shop(fil_id, shop_id, affiliate_url, affiliazione=use_awin)
             if fs_id >= 0:
                 db.insert_price(fs_id, prezzo, None, available)
                 total += 1
@@ -919,7 +980,7 @@ def scrape_esun(db: DB):
                 )
                 if fil_id < 0:
                     continue
-                fs_id = db.get_or_create_filament_shop(fil_id, shop_id, url)
+                fs_id = db.get_or_create_filament_shop(fil_id, shop_id, affiliate_url, affiliazione=use_awin)
                 if fs_id >= 0:
                     db.insert_price(fs_id, prezzo, None, available)
                     total += 1
@@ -1071,11 +1132,273 @@ def scrape_bambu(db: DB):
     log.info(f"Bambu Lab: {total} prodotti processati")
 
 
+# ── Scraper 3DJake IT ─────────────────────────────────────────────────────────
+
+DJAKE_BASE = "https://www.3djake.it"
+DJAKE_SITEMAP = "https://www.3djake.it/sitemap-p.xml"
+
+# Keyword per filtrare URL filamento dalla sitemap (slug URL)
+DJAKE_FILAMENT_KEYWORDS = [
+    "filament", "pla", "petg", "abs", "asa", "tpu", "nylon",
+    "filamento", "polyamide", "polycarbonate",
+]
+
+# Keyword per saltare prodotti non-filamento
+DJAKE_SKIP_SLUGS = [
+    # Resine
+    "resina", "resin", "lcd-resin", "msla",
+    # Accessori hardware
+    "nozzle", "ugello", "build-plate", "tool", "starter-kit",
+    "dryer", "essiccatore", "accessori", "accessory",
+    # Schermi / parti di ricambio
+    "screen", "schermo", "display", "lcd", "fep-film", "fep", "nfep", "release-film",
+    "spare", "ricambio", "replacement",
+    # Stampanti
+    "printer", "stampante",
+    # Altro
+    "wash-and-cure", "wash", "cure",
+]
+
+# Ulteriore validazione post-fetch: il nome prodotto deve contenere un materiale filamento
+DJAKE_NAME_MUST_CONTAIN = [
+    "pla", "petg", "abs", "asa", "tpu", "nylon", "filament", "filamento",
+    "polyamide", "polycarbonate", "pa-cf", "pa cf", "petg-cf",
+]
+
+# Peso comuni in formato "X,XX kg" usato da 3DJake nei titoli italiani
+DJAKE_WEIGHT_RE = re.compile(
+    r'(\d+(?:[.,]\d+)?)\s*kg\b|(\d+)\s*g\b',
+    re.IGNORECASE
+)
+
+
+def detect_weight_djake(text: str) -> int:
+    """Parsa pesi nel formato italiano di 3DJake (es. '0,22 kg', '1 kg')."""
+    m = DJAKE_WEIGHT_RE.search(text)
+    if not m:
+        return 1000
+    if m.group(1):  # kg (con virgola decimale italiana)
+        return int(float(m.group(1).replace(",", ".")) * 1000)
+    if m.group(2):  # g
+        return int(m.group(2))
+    return 1000
+
+
+def fetch_djake_sitemap() -> list[str]:
+    """Scarica sitemap-p.xml e restituisce gli URL prodotto filamento."""
+    try:
+        r = requests.get(DJAKE_SITEMAP, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        root = ET.fromstring(r.text)
+    except Exception as e:
+        log.error(f"Errore fetch sitemap 3DJake: {e}")
+        return []
+
+    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    all_urls = [loc.text for loc in root.findall(".//sm:loc", ns) if loc.text]
+
+    fil_urls = []
+    for u in all_urls:
+        slug = u.rstrip("/").split("/")[-1].lower()
+        # Deve contenere almeno una keyword filamento
+        if not any(kw in slug for kw in DJAKE_FILAMENT_KEYWORDS):
+            continue
+        # Non deve contenere keyword da saltare
+        if any(kw in slug for kw in DJAKE_SKIP_SLUGS):
+            continue
+        fil_urls.append(u)
+
+    return fil_urls
+
+
+def fetch_djake_product(url: str) -> Optional[dict]:
+    """
+    Scarica una pagina prodotto 3DJake e estrae dati dal JSON-LD Product.
+    Ritorna dict con: name, brand, price, available, image, sku, shipping
+    oppure None se la pagina non è un prodotto filamento valido.
+    """
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        log.warning(f"  Errore fetch {url}: {e}")
+        return None
+
+    # Cerca tutti i blocchi JSON-LD
+    jld_blocks = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        html, re.DOTALL | re.IGNORECASE
+    )
+
+    product_ld = None
+    for block in jld_blocks:
+        try:
+            data = json.loads(block)
+            # Può essere un array o un singolo oggetto
+            if isinstance(data, list):
+                for item in data:
+                    if item.get("@type") == "Product":
+                        product_ld = item
+                        break
+            elif data.get("@type") == "Product":
+                product_ld = data
+            if product_ld:
+                break
+        except Exception:
+            continue
+
+    if not product_ld:
+        return None
+
+    name = product_ld.get("name", "")
+    sku = product_ld.get("sku")
+    brand_name = ""
+    brand_obj = product_ld.get("brand", {})
+    if isinstance(brand_obj, dict):
+        brand_name = brand_obj.get("name", "")
+
+    # Prezzo e disponibilità da offers
+    offers = product_ld.get("offers", {})
+    if isinstance(offers, list):
+        offers = offers[0] if offers else {}
+
+    try:
+        price = float(offers.get("price", 0))
+    except (ValueError, TypeError):
+        return None
+    if price <= 0:
+        return None
+
+    avail_str = offers.get("availability", "")
+    available = "InStock" in avail_str
+
+    # Spedizione
+    shipping = 0.0
+    shipping_rate = offers.get("shippingRate", {}) or offers.get("priceSpecification", {})
+    if isinstance(shipping_rate, dict):
+        try:
+            shipping = float(shipping_rate.get("value", 0) or 0)
+        except (ValueError, TypeError):
+            shipping = 0.0
+
+    # Immagine principale
+    images = product_ld.get("image", [])
+    if isinstance(images, str):
+        images = [images]
+    main_image = images[0] if images else None
+
+    return {
+        "name": name,
+        "brand": brand_name,
+        "price": price,
+        "available": available,
+        "image": main_image,
+        "sku": sku,
+        "shipping": shipping,
+    }
+
+
+def scrape_3djake(db: DB):
+    log.info("=== 3DJAKE IT ===")
+    shop_id = db.get_shop_id("3DJake IT")
+    if not shop_id:
+        log.error("Shop 3DJake non trovato nel DB (aggiungilo con nome '3DJake')")
+        return
+
+    log.info(f"Shop ID: {shop_id}")
+
+    fil_urls = fetch_djake_sitemap()
+    log.info(f"Trovati {len(fil_urls)} URL filamenti da processare")
+
+    total = 0
+    skipped = 0
+
+    for url in fil_urls:
+        data = fetch_djake_product(url)
+        if not data:
+            skipped += 1
+            time.sleep(0.3)
+            continue
+
+        name = data["name"]
+        brand_name = data["brand"]
+
+        # Validazione extra: il nome prodotto deve contenere un materiale filamento
+        name_lower = name.lower()
+        if not any(kw in name_lower for kw in DJAKE_NAME_MUST_CONTAIN):
+            log.debug(f"  Skip non-filamento (nome): {name}")
+            skipped += 1
+            time.sleep(0.3)
+            continue
+
+        # Trova brand nel DB (deve già esistere)
+        brand_id = db.get_brand_id(brand_name) if brand_name else None
+        if not brand_id:
+            # Prova a estrarre brand dal nome prodotto (es. "Bambu Lab PLA Matte, ...")
+            # Cerca brand noti
+            for known_brand in ["Bambu Lab", "Polymaker", "Prusament", "Prusa Research",
+                                 "Fiberlogy", "eSUN", "Elegoo", "Sunlu", "Das Filament",
+                                 "Extrudr", "Fillamentum", "ColorFabb", "FormFutura",
+                                 "Eryone", "Amolen", "Hatchbox", "Creality", "3DJake"]:
+                if known_brand.lower() in name.lower():
+                    brand_id = db.get_brand_id(known_brand)
+                    if brand_id:
+                        break
+
+        if not brand_id:
+            log.debug(f"  Skip brand non trovato: {brand_name!r} — {name}")
+            skipped += 1
+            time.sleep(0.3)
+            continue
+
+        # Detect tipo e variante dal nome prodotto
+        type_nome = detect_type(name)
+        if not type_nome:
+            log.debug(f"  Skip tipo non rilevato: {name}")
+            skipped += 1
+            time.sleep(0.3)
+            continue
+
+        variant_nome = detect_variant(type_nome, name)
+        type_id = db.get_or_create_type(type_nome)
+        if type_id < 0:
+            continue
+        variant_id = db.get_or_create_variant(type_id, variant_nome)
+        if variant_id < 0:
+            continue
+
+        # Colore e peso
+        colore, colore_hex, colore_famiglia = detect_color(name)
+        peso_g = detect_weight_djake(name)
+
+        fil_id = db.get_or_create_filament(
+            variant_id, brand_id, colore, colore_hex, colore_famiglia,
+            peso_g, 1.75, data["image"], data["sku"]
+        )
+        if fil_id < 0:
+            time.sleep(0.3)
+            continue
+
+        fs_id = db.get_or_create_filament_shop(fil_id, shop_id, url, affiliazione=False)
+        if fs_id < 0:
+            time.sleep(0.3)
+            continue
+
+        db.insert_price(fs_id, data["price"], None, data["available"])
+        total += 1
+
+        log.debug(f"  OK: {name} — €{data['price']} ({'in stock' if data['available'] else 'out of stock'})")
+        time.sleep(0.3)  # rate limiting gentile
+
+    log.info(f"3DJake IT: {total} prodotti processati, {skipped} saltati")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Filament Finder Scraper")
-    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "all"], default="all")
+    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "3djake", "all"], default="all")
     parser.add_argument("--dry-run", action="store_true", help="Non scrive nel DB")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -1106,6 +1429,9 @@ def main():
 
     if args.shop in ("bambu", "all"):
         scrape_bambu(db)
+
+    if args.shop in ("3djake", "all"):
+        scrape_3djake(db)
 
     elapsed = (datetime.now() - start).total_seconds()
     log.info(f"=== Completato in {elapsed:.1f}s ===")

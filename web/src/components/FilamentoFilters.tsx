@@ -17,6 +17,22 @@ interface Props {
 const sel =
   "bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500";
 
+// Colore famiglia → hex rappresentativo
+const FAMIGLIA_HEX: Record<string, string> = {
+  nero:        "#1a1a1a",
+  bianco:      "#f0f0f0",
+  grigio:      "#808080",
+  rosso:       "#cc0000",
+  blu:         "#0033cc",
+  verde:       "#008000",
+  giallo:      "#ffdd00",
+  arancio:     "#ff6600",
+  viola:       "#660099",
+  marrone:     "#8b4513",
+  trasparente: "#e8f4f8",
+  multicolor:  "multicolor",
+};
+
 type SortKey = "prezzo" | "brand" | "tipo" | "colore" | "peso" | "prezzo_min";
 
 const TYPE_PILL: Record<string, string> = {
@@ -46,6 +62,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
   const famiglia = params.get("colore")   ?? "";
   const peso     = params.get("peso")     ?? "";
   const prezzoMax= params.get("maxkg")    ?? "";
+  const refill   = params.get("refill")   ?? "";
   const sortBy   = (params.get("sort")   ?? "prezzo") as SortKey;
   const view     = (params.get("view")   ?? "grid")   as "grid" | "table";
 
@@ -85,6 +102,8 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
       if (famiglia && f.colore_famiglia !== famiglia) return false;
       if (peso && f.peso_g !== Number(peso)) return false;
       if (prezzoMax && f.prezzo_per_kg_min != null && Number(f.prezzo_per_kg_min) > Number(prezzoMax)) return false;
+      if (refill === "yes" && !f.is_refill) return false;
+      if (refill === "no" && f.is_refill) return false;
       if (q) {
         const search = q.toLowerCase();
         const text = [f.brand, f.tipo, f.variante, f.colore, f.colore_famiglia]
@@ -117,7 +136,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
     return result;
   }, [filamenti, q, tipo, brand, diametro, famiglia, peso, prezzoMax, sortBy, view]);
 
-  const hasFilters = q || tipo || brand || diametro || famiglia || peso || prezzoMax;
+  const hasFilters = q || tipo || brand || diametro || famiglia || peso || prezzoMax || refill;
 
   const formatPeso = (p: string) => {
     const n = Number(p);
@@ -159,10 +178,41 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           <option value="5000">5 kg</option>
           <option value="10000">10 kg</option>
         </select>
-        <select value={famiglia} onChange={(e) => setParam("colore", e.target.value)} className={sel}>
-          <option value="">Tutti i colori</option>
-          {famiglie.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        {/* Color swatches */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {famiglie.map((c) => {
+            const hex = FAMIGLIA_HEX[c];
+            const isActive = famiglia === c;
+            return (
+              <button
+                key={c}
+                onClick={() => setParam("colore", isActive ? "" : c)}
+                title={c.charAt(0).toUpperCase() + c.slice(1)}
+                className={`relative w-6 h-6 rounded-full border-2 transition-all ${
+                  isActive ? "border-emerald-400 scale-110" : "border-zinc-700 hover:border-zinc-400"
+                }`}
+                style={
+                  hex === "multicolor"
+                    ? { background: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)" }
+                    : { backgroundColor: hex ?? "#808080" }
+                }
+              >
+                {hex === "#f0f0f0" || hex === "#ffdd00" || hex === "#e8f4f8" ? (
+                  <span className="sr-only">{c}</span>
+                ) : null}
+              </button>
+            );
+          })}
+          {famiglia && (
+            <button
+              onClick={() => setParam("colore", "")}
+              className="text-xs text-zinc-500 hover:text-zinc-300 px-1 transition-colors"
+              title="Reset colore"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <input
           type="number"
           placeholder="Max €/kg"
@@ -170,6 +220,22 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           onChange={(e) => setParam("maxkg", e.target.value)}
           className={`${sel} w-28`}
         />
+        {/* Toggle refill */}
+        <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1">
+          <button
+            onClick={() => setParam("refill", refill === "no" ? "" : "no")}
+            className={`text-xs px-2 py-0.5 rounded transition-colors ${refill === "no" ? "bg-zinc-600 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+          >
+            Con bobina
+          </button>
+          <button
+            onClick={() => setParam("refill", refill === "yes" ? "" : "yes")}
+            className={`text-xs px-2 py-0.5 rounded transition-colors ${refill === "yes" ? "bg-amber-700 text-amber-100" : "text-zinc-500 hover:text-zinc-300"}`}
+          >
+            Refill
+          </button>
+        </div>
+
         {view === "grid" && (
           <select value={sortBy} onChange={(e) => setParam("sort", e.target.value)} className={sel}>
             <option value="prezzo">€/kg ↑</option>
@@ -275,9 +341,15 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           {famiglia && (
             <button
               onClick={() => setParam("colore", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+              className="flex items-center gap-1.5 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
             >
-              Colore: {famiglia} <span className="text-zinc-500">×</span>
+              {FAMIGLIA_HEX[famiglia] && FAMIGLIA_HEX[famiglia] !== "multicolor" && (
+                <span
+                  className="w-3 h-3 rounded-full border border-zinc-600 inline-block shrink-0"
+                  style={{ backgroundColor: FAMIGLIA_HEX[famiglia] }}
+                />
+              )}
+              {famiglia.charAt(0).toUpperCase() + famiglia.slice(1)} <span className="text-zinc-500">×</span>
             </button>
           )}
           {peso && (
@@ -294,6 +366,22 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
               className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
             >
               Max €{prezzoMax}/kg <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {refill === "yes" && (
+            <button
+              onClick={() => setParam("refill", "")}
+              className="flex items-center gap-1 bg-amber-900/60 text-amber-300 text-xs px-2 py-1 rounded-full hover:bg-amber-900 transition-colors"
+            >
+              Solo Refill <span className="text-amber-600">×</span>
+            </button>
+          )}
+          {refill === "no" && (
+            <button
+              onClick={() => setParam("refill", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Solo con bobina <span className="text-zinc-500">×</span>
             </button>
           )}
         </div>
