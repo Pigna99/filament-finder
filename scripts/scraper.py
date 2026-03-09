@@ -1014,22 +1014,138 @@ def scrape_esun(db: DB):
 BAMBU_ACCESSORY_SLUGS = [
     "sensor", "buffer", "cutter", "hub", "funnel", "retraction",
     "adapter", "swatch", "guide", "protection", "idler", "pad",
-    "beginner", "pack", "replacement", "assembly", "board", "connection",
+    "beginner", "replacement", "assembly", "board", "connection",
 ]
 
 
-def fetch_bambu_product_handles() -> list[str]:
+def _parse_bambu_variant_name(name: str) -> tuple[str, int, bool]:
     """
-    Scarica la sitemap Bambu EU e ritorna gli handle prodotto filamento
-    (deduplicati, esclusi gli accessori).
+    Parsa il nome variante Bambu da JSON-LD hasVariant.
+    Formato: "PLA Basic - Jade White (10100) / Refill / 1kg"
+                          o "PLA Basic - Black / 1kg"
+    Ritorna (color_raw, peso_g, is_refill).
     """
-    BAMBU_BASE = "https://eu.store.bambulab.com"
+    # Separa la parte colore (dopo " - ") dal resto
+    if " - " in name:
+        rest = name.split(" - ", 1)[1]
+    else:
+        rest = name
+
+    parts = [p.strip() for p in rest.split("/")]
+
+    # Prima parte = colore (potenzialmente con codice es. "Jade White (10100)")
+    color_raw = re.sub(r"\s*\([^)]+\)", "", parts[0]).strip()
+
+    # Cerca peso e is_refill nelle parti rimanenti
+    is_refill = any("refill" in p.lower() for p in parts[1:])
+    peso_g = 1000
+    for p in parts[1:]:
+        w = detect_weight(p + " 1kg")
+        if w != 1000 or "kg" in p.lower() or "g" in p.lower():
+            peso_g = w
+            break
+
+    return color_raw, peso_g, is_refill
+
+
+def fetch_bambu_product_variants(url: str) -> list[dict]:
+    """
+    Scarica una pagina prodotto Bambu Lab ed estrae le varianti
+    dal JSON-LD ProductGroup.hasVariant.
+    Ogni variante contiene: name, color_raw, peso_g, is_refill, price,
+    available, image, variant_url, sku.
+    """
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        if r.status_code == 429:
+            log.warning("  Rate limit Bambu, attendo 60s...")
+            time.sleep(60)
+            r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        log.warning(f"  Errore fetch {url}: {e}")
+        return []
+
+    jld_blocks = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        html, re.DOTALL | re.IGNORECASE
+    )
+
+    variants = []
+    for block in jld_blocks:
+        try:
+            ld = json.loads(block)
+            items = ld if isinstance(ld, list) else [ld]
+            for item in items:
+                if item.get("@type") not in ("ProductGroup", "Product"):
+                    continue
+                has_variant = item.get("hasVariant", [])
+                if not has_variant and item.get("@type") == "Product":
+                    # Singola variante
+                    has_variant = [item]
+                for v in has_variant:
+                    name = v.get("name", "")
+                    sku = v.get("sku")
+                    img = v.get("image", "")
+                    if isinstance(img, list):
+                        img = img[0] if img else ""
+                    offers = v.get("offers", {})
+                    if isinstance(offers, list):
+                        offers = offers[0] if offers else {}
+                    try:
+                        price = float(offers.get("price", 0))
+                    except (ValueError, TypeError):
+                        continue
+                    if price <= 0:
+                        continue
+                    avail_str = offers.get("availability", "")
+                    available = "InStock" in avail_str if avail_str else True
+                    variant_url = offers.get("url", url)
+                    color_raw, peso_g, is_refill = _parse_bambu_variant_name(name)
+                    variants.append({
+                        "name": name,
+                        "color_raw": color_raw,
+                        "peso_g": peso_g,
+                        "is_refill": is_refill,
+                        "price": price,
+                        "available": available,
+                        "image": img,
+                        "variant_url": variant_url,
+                        "sku": sku,
+                    })
+        except Exception:
+            continue
+        if variants:
+            break
+
+    return variants
+
+
+def scrape_bambu(db: DB):
+    """
+    Scraper Bambu Lab EU.
+    Usa la sitemap per trovare i prodotti filamento, poi estrae le varianti
+    per colore/peso dal JSON-LD ProductGroup.hasVariant di ogni pagina.
+    """
+    log.info("=== BAMBU LAB EU ===")
+    brand_id = db.get_brand_id("Bambu Lab")
+    shop_id = db.get_shop_id("Bambu")
+    if not brand_id or not shop_id:
+        log.error("Brand o shop Bambu Lab non trovato nel DB")
+        return
+
+    log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
+    BAMBU_EU = "https://eu.store.bambulab.com"
+
+    # Recupera URL prodotti dalla sitemap
     ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    handles: dict[str, str] = {}  # handle -> full url
+    seen_handles: set[str] = set()
+    product_urls: list[str] = []
 
     sitemap_list: list[str] = []
     try:
-        r = requests.get(f"{BAMBU_BASE}/sitemap.xml", headers=HEADERS, timeout=15)
+        r = requests.get(f"{BAMBU_EU}/sitemap.xml", headers=HEADERS, timeout=15)
         if r.ok:
             root = ET.fromstring(r.text)
             sitemap_list = [
@@ -1039,7 +1155,7 @@ def fetch_bambu_product_handles() -> list[str]:
     except Exception:
         pass
     if not sitemap_list:
-        sitemap_list = [f"{BAMBU_BASE}/sitemap_products_{i}.xml" for i in range(1, 4)]
+        sitemap_list = [f"{BAMBU_EU}/sitemap_products_{i}.xml" for i in range(1, 4)]
 
     for sm_url in sitemap_list:
         try:
@@ -1055,61 +1171,71 @@ def fetch_bambu_product_handles() -> list[str]:
                     continue
                 if any(kw in handle for kw in BAMBU_ACCESSORY_SLUGS):
                     continue
-                if handle not in handles:
-                    handles[handle] = loc.text
+                if handle not in seen_handles:
+                    seen_handles.add(handle)
+                    product_urls.append(loc.text)
         except Exception as e:
             log.debug(f"  Sitemap {sm_url}: {e}")
             break
 
-    return list(handles.values())
-
-
-def scrape_bambu(db: DB):
-    """
-    Scraper Bambu Lab EU.
-    Usa la sitemap per trovare gli handle prodotto, poi scarica ogni
-    /products/{handle}.json (Shopify) per ottenere varianti per colore/peso.
-    Il bulk /products.json è disabilitato sul loro store.
-    """
-    log.info("=== BAMBU LAB EU ===")
-    brand_id = db.get_brand_id("Bambu Lab")
-    shop_id = db.get_shop_id("Bambu")
-    if not brand_id or not shop_id:
-        log.error("Brand o shop Bambu Lab non trovato nel DB")
-        return
-
-    log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
-    BAMBU_EU = "https://eu.store.bambulab.com"
-
-    product_urls = fetch_bambu_product_handles()
     log.info(f"Trovati {len(product_urls)} URL prodotti filamento da processare")
 
+    _processed_pairs: set[tuple[int, int]] = set()
     total = 0
+
     for url in product_urls:
         handle = url.split("/products/")[-1].lower().rstrip("/")
-        try:
-            r = requests.get(f"{BAMBU_EU}/products/{handle}.json", headers=HEADERS, timeout=20)
-            if not r.ok:
-                log.debug(f"  Skip HTTP {r.status_code}: {handle}")
-                time.sleep(1)
-                continue
-            product = r.json().get("product", {})
-        except Exception as e:
-            log.debug(f"  Errore fetch {handle}: {e}")
+        # Controlla tipo dal titolo slug prima di fare la richiesta
+        title_from_slug = handle.replace("-", " ")
+        if not detect_type(title_from_slug):
+            log.debug(f"  Skip tipo non rilevato (slug): {handle}")
+            continue
+
+        variants = fetch_bambu_product_variants(url)
+        if not variants:
+            log.debug(f"  Skip (nessuna variante): {handle}")
             time.sleep(1)
             continue
 
-        if not is_filament_product(product):
-            log.debug(f"  Skip non-filamento: {handle}")
-            time.sleep(0.5)
+        # Rileva tipo e variante dal nome del primo elemento
+        type_nome = detect_type(variants[0]["name"] + " " + title_from_slug)
+        if not type_nome:
+            log.debug(f"  Skip tipo non rilevato: {handle}")
+            time.sleep(1)
             continue
 
-        n = process_shopify_product(
-            product, brand_id, shop_id, db, BAMBU_EU,
-            default_weight_g=1000,
-        )
-        total += n
-        time.sleep(1)  # Bambu ha rate limiting aggressivo
+        variant_nome = detect_variant(type_nome, variants[0]["name"] + " " + title_from_slug)
+        type_id = db.get_or_create_type(type_nome)
+        if type_id < 0:
+            continue
+        variant_id = db.get_or_create_variant(type_id, variant_nome)
+        if variant_id < 0:
+            continue
+
+        for v in variants:
+            colore, colore_hex, colore_famiglia = detect_color(v["color_raw"])
+            fil_id = db.get_or_create_filament(
+                variant_id, brand_id, colore, colore_hex, colore_famiglia,
+                v["peso_g"], 1.75, v["image"] or None, v["sku"],
+                is_refill=v["is_refill"],
+            )
+            if fil_id < 0:
+                continue
+
+            pair = (fil_id, shop_id)
+            if pair in _processed_pairs:
+                log.debug(f"  Skip duplicato (fil_id={fil_id}): {v['name']}")
+                continue
+            _processed_pairs.add(pair)
+
+            fs_id = db.get_or_create_filament_shop(fil_id, shop_id, v["variant_url"])
+            if fs_id < 0:
+                continue
+
+            db.insert_price(fs_id, v["price"], None, v["available"])
+            total += 1
+
+        time.sleep(1)  # rate limiting
 
     log.info(f"Bambu Lab: {total} varianti processate")
 
