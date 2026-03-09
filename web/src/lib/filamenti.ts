@@ -111,7 +111,8 @@ export async function getCatalogo(filters: CatalogoFilters = {}): Promise<Filame
 export async function getFilamentoBySlug(slug: string): Promise<FilamentoRow | null> {
   // Extract peso_g from slug suffix (e.g. "bambu-pla-matte-black-1000g" → 1000)
   // to narrow the query significantly instead of loading all rows
-  const pesoMatch = slug.match(/-(\d+)g$/);
+  // Handle both standard slugs (...-1000g) and refill slugs (...-1000g-refill)
+  const pesoMatch = slug.match(/-(\d+)g(?:-refill)?$/);
   const pesoG = pesoMatch ? parseInt(pesoMatch[1]) : null;
 
   const rows = pesoG
@@ -121,7 +122,7 @@ export async function getFilamentoBySlug(slug: string): Promise<FilamentoRow | n
   return (
     rows.find(
       (r) =>
-        slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g) === slug
+        slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g, r.is_refill) === slug
     ) ?? null
   );
 }
@@ -173,37 +174,38 @@ export async function getTopFilamenti(limit = 6): Promise<FilamentoRow[]> {
 }
 
 // ----------------------------------------------------------------
-// getVariantiColore — altri colori dello stesso modello (stesso brand+tipo+variante+peso)
+// getVariantiModello — tutte le varianti dello stesso modello (brand+tipo+variante)
+// include tutti i colori, tutti i pesi e varianti refill
 // ----------------------------------------------------------------
-export interface VarianteColore {
+export interface VarianteModello {
   id: number;
   colore: string | null;
   colore_hex: string | null;
+  peso_g: number;
+  is_refill: boolean;
   slug: string;
 }
 
-export async function getVariantiColore(
+export async function getVariantiModello(
   id_brand: number,
   id_type: number,
   id_variant: number,
-  peso_g: number,
-  current_id: number
-): Promise<VarianteColore[]> {
+): Promise<VarianteModello[]> {
   const rows = await sql<FilamentoRow[]>`
     SELECT *
     FROM v_filament_full
-    WHERE id_brand  = ${id_brand}
-      AND id_type   = ${id_type}
+    WHERE id_brand   = ${id_brand}
+      AND id_type    = ${id_type}
       AND id_variant = ${id_variant}
-      AND peso_g    = ${peso_g}
-      AND id        != ${current_id}
-    ORDER BY colore ASC
+    ORDER BY colore ASC, peso_g ASC, is_refill ASC
   `;
   return rows.map((r) => ({
     id: r.id,
     colore: r.colore,
     colore_hex: r.colore_hex,
-    slug: slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g),
+    peso_g: r.peso_g,
+    is_refill: r.is_refill,
+    slug: slugifyFilamento(r.brand, r.tipo, r.variante, r.colore, r.peso_g, r.is_refill),
   }));
 }
 

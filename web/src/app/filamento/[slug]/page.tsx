@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PriceChart from "@/components/PriceChart";
+import FilamentoVariantiSelector from "@/components/FilamentoVariantiSelector";
 import {
   getFilamentoBySlug,
   getPrezziShop,
   getStoricoPrezzi,
   getTags,
-  getVariantiColore,
+  getVariantiModello,
 } from "@/lib/filamenti";
 
 export const revalidate = 900;
@@ -44,11 +45,11 @@ export default async function FilamentoPage({ params }: Props) {
   const f = await getFilamentoBySlug(slug).catch(() => null);
   if (!f) notFound();
 
-  const [prezziShop, storico, tags, variantiColore] = await Promise.all([
+  const [prezziShop, storico, tags, variantiModello] = await Promise.all([
     getPrezziShop(f.id).catch(() => []),
     getStoricoPrezzi(f.id).catch(() => []),
     getTags(f.id).catch(() => []),
-    getVariantiColore(f.id_brand, f.id_type, f.id_variant, f.peso_g, f.id).catch(() => []),
+    getVariantiModello(f.id_brand, f.id_type, f.id_variant).catch(() => []),
   ]);
 
   const storicoSerializable = storico.map((p) => ({
@@ -150,30 +151,14 @@ export default async function FilamentoPage({ params }: Props) {
               </div>
             )}
 
-            {/* Selettore varianti colore */}
-            {variantiColore.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs text-zinc-600 mb-2">Altri colori disponibili</p>
-                <div className="flex flex-wrap gap-2">
-                  {/* Colore corrente (selezionato) */}
-                  <span
-                    title={f.colore ?? "Colore attuale"}
-                    className="w-8 h-8 rounded-full border-2 border-emerald-400 shadow-[0_0_0_2px_rgba(52,211,153,0.25)] cursor-default"
-                    style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
-                  />
-                  {/* Altri colori */}
-                  {variantiColore.map((v) => (
-                    <a
-                      key={v.id}
-                      href={`/filamento/${v.slug}`}
-                      title={v.colore ?? ""}
-                      className="w-8 h-8 rounded-full border-2 border-zinc-700 hover:border-zinc-400 transition-all hover:scale-110"
-                      style={{ backgroundColor: v.colore_hex ?? "#3f3f46" }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Selettore varianti: colori, pesi, refill */}
+            <FilamentoVariantiSelector
+              varianti={variantiModello}
+              currentId={f.id}
+              currentColore={f.colore}
+              currentPeso={f.peso_g}
+              currentIsRefill={f.is_refill}
+            />
 
             {/* Specifiche */}
             <div className="space-y-2 text-sm">

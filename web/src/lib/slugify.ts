@@ -12,8 +12,9 @@ export function slugifyFilamento(
   tipo: string,
   variante: string,
   colore: string | null,
-  peso: number
+  peso: number,
+  isRefill?: boolean
 ): string {
-  const parts = [brand, tipo, variante, colore || "", `${peso}g`].filter(Boolean);
+  const parts = [brand, tipo, variante, colore || "", `${peso}g`, isRefill ? "refill" : ""].filter(Boolean);
   return parts.map(slugify).join("-");
 }
