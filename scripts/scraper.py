@@ -1009,156 +1009,13 @@ def scrape_esun(db: DB):
 
 # ── Scraper Bambu Lab EU ──────────────────────────────────────────────────────
 
-BAMBU_IMG_RE = re.compile(r'(https://[^"\']+\.(?:jpg|jpeg|png|webp)[^"\']*(?:filament|spool)[^"\']*)', re.IGNORECASE)
-BAMBU_PRICE_FALLBACK_RE = re.compile(r'€\s*(\d+\.\d+)')
-
-# Prezzo minimo ragionevole per un filamento (evita prezzi di campioni/accessori)
-BAMBU_MIN_PRICE = 8.0
-
-
-def fetch_bambu_product(url: str) -> Optional[dict]:
-    """Scarica una pagina prodotto Bambu Lab ed estrae dati dal JSON-LD."""
-    for attempt in range(3):
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=20)
-            if r.status_code == 429:
-                wait = 30 * (attempt + 1)
-                log.warning(f"  Rate limit Bambu, attendo {wait}s...")
-                time.sleep(wait)
-                continue
-            r.raise_for_status()
-            html = r.text
-            break
-        except Exception as e:
-            if attempt == 2:
-                log.warning(f"  Errore fetch {url}: {e}")
-                return None
-            time.sleep(5)
-    else:
-        return None
-
-    # Estrae prezzo e disponibilità da JSON-LD (più affidabile del regex su HTML)
-    jld_blocks = re.findall(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html, re.DOTALL | re.IGNORECASE
-    )
-    price: Optional[float] = None
-    compare_price: Optional[float] = None
-    available = True
-    main_image: Optional[str] = None
-
-    for block in jld_blocks:
-        try:
-            ld = json.loads(block)
-            items = ld if isinstance(ld, list) else [ld]
-            for item in items:
-                if item.get("@type") != "Product":
-                    continue
-                # Immagine
-                imgs = item.get("image", [])
-                if isinstance(imgs, str):
-                    imgs = [imgs]
-                if imgs and not main_image:
-                    main_image = imgs[0]
-                # Offers
-                offers = item.get("offers", {})
-                if isinstance(offers, list):
-                    offer_list = offers
-                elif isinstance(offers, dict):
-                    offer_list = [offers]
-                else:
-                    offer_list = []
-                prices_valid = []
-                for o in offer_list:
-                    try:
-                        p = float(o.get("price", 0))
-                    except (ValueError, TypeError):
-                        continue
-                    if p >= BAMBU_MIN_PRICE:
-                        prices_valid.append(p)
-                    avail = o.get("availability", "")
-                    if avail:
-                        available = "InStock" in avail
-                if prices_valid:
-                    price = min(prices_valid)
-                break
-        except Exception:
-            continue
-        if price is not None:
-            break
-
-    # Fallback regex (solo se JSON-LD non ha fornito un prezzo valido)
-    if price is None:
-        all_prices = [float(p) for p in BAMBU_PRICE_FALLBACK_RE.findall(html) if float(p) >= BAMBU_MIN_PRICE]
-        if all_prices:
-            price = min(all_prices)
-
-    if not price:
-        return None
-
-    # Immagine fallback
-    if not main_image:
-        img_m = BAMBU_IMG_RE.search(html)
-        main_image = img_m.group(1) if img_m else None
-
-    return {
-        "url": url,
-        "price": price,
-        "compare_price": compare_price,
-        "image": main_image,
-        "available": available,
-    }
-
-
-def fetch_bambu_sitemaps() -> list[str]:
-    """
-    Scarica tutte le sitemap prodotti Bambu Lab EU.
-    Prima prova la sitemap index, poi tenta _1, _2, _3 in sequenza.
-    Filtra URL che contengono "filament" nel slug.
-    """
-    BAMBU_BASE = "https://eu.store.bambulab.com"
-    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    all_product_urls: set[str] = set()
-
-    # Prova sitemap index
-    sitemap_list: list[str] = []
-    try:
-        r = requests.get(f"{BAMBU_BASE}/sitemap.xml", headers=HEADERS, timeout=15)
-        if r.ok:
-            root = ET.fromstring(r.text)
-            sitemap_list = [
-                loc.text for loc in root.findall(".//sm:loc", ns)
-                if loc.text and "sitemap_products" in loc.text
-            ]
-    except Exception:
-        pass
-
-    # Fallback: prova sitemap numerati fino a _5
-    if not sitemap_list:
-        sitemap_list = [f"{BAMBU_BASE}/sitemap_products_{i}.xml" for i in range(1, 6)]
-
-    for sm_url in sitemap_list:
-        try:
-            r = requests.get(sm_url, headers=HEADERS, timeout=15)
-            if not r.ok:
-                break
-            root = ET.fromstring(r.text)
-            for loc in root.findall(".//sm:loc", ns):
-                if loc.text:
-                    all_product_urls.add(loc.text)
-        except Exception as e:
-            log.debug(f"  Sitemap {sm_url}: {e}")
-            break
-
-    # Filtra solo URL filamenti
-    fil_urls = sorted(
-        u for u in all_product_urls
-        if "filament" in u.split("/products/")[-1].lower()
-    )
-    return fil_urls
-
 
 def scrape_bambu(db: DB):
+    """
+    Scraper Bambu Lab EU.
+    Usa la Shopify API (/products.json) per ottenere varianti per colore e peso,
+    poi processa ogni prodotto con process_shopify_product.
+    """
     log.info("=== BAMBU LAB EU ===")
     brand_id = db.get_brand_id("Bambu Lab")
     shop_id = db.get_shop_id("Bambu")
@@ -1168,66 +1025,30 @@ def scrape_bambu(db: DB):
 
     log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
 
-    fil_urls = fetch_bambu_sitemaps()
-    log.info(f"Trovati {len(fil_urls)} URL filamenti da processare")
+    BAMBU_EU = "https://eu.store.bambulab.com"
 
-    _processed_pairs: set[tuple[int, int]] = set()
+    # Prima prova la collection "filament", poi tutto lo store come fallback
+    products_raw = fetch_shopify_products(BAMBU_EU, "filament")
+    if not products_raw:
+        log.info("  Collection 'filament' vuota, provo tutti i prodotti...")
+        products_raw = fetch_shopify_products(BAMBU_EU)
+
+    log.info(f"Trovati {len(products_raw)} prodotti totali")
+
+    # Filtra solo prodotti filamento
+    filament_products = [p for p in products_raw if is_filament_product(p)]
+    log.info(f"Filtrati {len(filament_products)} filamenti da processare")
+
     total = 0
-    for url in fil_urls:
-        slug = url.split("/products/")[-1]
-        title_text = slug.replace("-", " ").title()
-        combined = title_text
-
-        type_nome = detect_type(combined)
-        if not type_nome:
-            log.debug(f"  Skip (tipo non rilevato): {slug}")
-            continue
-
-        variant_nome = detect_variant(type_nome, combined)
-        type_id = db.get_or_create_type(type_nome)
-        if type_id < 0:
-            continue
-        variant_id = db.get_or_create_variant(type_id, variant_nome)
-        if variant_id < 0:
-            continue
-
-        # Colore dal titolo (es. "pla-basic-filament-jade-green")
-        colore, colore_hex, colore_famiglia = detect_color(combined)
-        peso_g = detect_weight(combined + " 1kg")  # default 1kg se non trovato
-
-        data = fetch_bambu_product(url)
-        if not data:
-            log.debug(f"  Skip (nessun prezzo): {slug}")
-            continue
-
-        fil_id = db.get_or_create_filament(
-            variant_id, brand_id, colore, colore_hex, colore_famiglia,
-            peso_g, 1.75, data.get("image"), None
+    for p in filament_products:
+        n = process_shopify_product(
+            p, brand_id, shop_id, db, BAMBU_EU,
+            default_weight_g=1000,
         )
-        if fil_id < 0:
-            continue
+        total += n
+        time.sleep(0.3)  # rate limiting gentile
 
-        pair = (fil_id, shop_id)
-        if pair in _processed_pairs:
-            log.debug(f"  Skip duplicato Bambu (fil_id={fil_id}): {slug}")
-            continue
-        _processed_pairs.add(pair)
-
-        fs_id = db.get_or_create_filament_shop(fil_id, shop_id, url)
-        if fs_id < 0:
-            continue
-
-        prezzo = data["price"]
-        prezzo_scontato = None
-        if data.get("compare_price") and data["compare_price"] > prezzo:
-            prezzo_scontato = prezzo
-            prezzo = data["compare_price"]
-
-        db.insert_price(fs_id, prezzo, prezzo_scontato, data["available"])
-        total += 1
-        time.sleep(2)  # Bambu ha rate limiting aggressivo
-
-    log.info(f"Bambu Lab: {total} prodotti processati")
+    log.info(f"Bambu Lab: {total} varianti processate")
 
 
 # ── Scraper 3DJake IT ─────────────────────────────────────────────────────────
