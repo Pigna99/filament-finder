@@ -1699,8 +1699,9 @@ def scrape_amazon(db: DB):
                 continue
 
             # Trova brand nel DB
+            # IMPORTANTE: verifica che il titolo contenga effettivamente il brand
             brand_id = None
-            if brand_hint:
+            if brand_hint and brand_hint.lower() in title_lower:
                 brand_id = db.get_brand_id(brand_hint)
             if not brand_id:
                 for b in all_brands_sorted:
