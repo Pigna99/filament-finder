@@ -138,18 +138,20 @@ export default async function GuidaPage({ params }: Props) {
         {g.prodottiConsigliati && g.prodottiConsigliati.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-semibold text-zinc-100">Essiccatori consigliati</h2>
-              <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2.5 py-0.5 font-medium">
-                Link affiliato Amazon
+              <h2 className="text-lg font-semibold text-zinc-100">
+                {g.titoloProdotti ?? "Prodotti consigliati"}
+              </h2>
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full px-2.5 py-0.5 font-medium">
+                Link affiliato
               </span>
             </div>
-            <p className="text-zinc-400 text-sm mb-5">
-              Questi sono gli essiccatori che consigliamo per mantenere le bobine asciutte e stampare senza problemi. I prezzi vengono aggiornati direttamente su Amazon.
-            </p>
+            {g.descrizioneProdotti && (
+              <p className="text-zinc-400 text-sm mb-5">{g.descrizioneProdotti}</p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {g.prodottiConsigliati.map((p) => (
                 <a
-                  key={p.asin}
+                  key={p.affiliateLink}
                   href={p.affiliateLink}
                   target="_blank"
                   rel="noopener noreferrer sponsored"

@@ -1,209 +1,201 @@
 #!/usr/bin/env python3
 """
-Cerca su Amazon IT i filamenti consigliati per ogni guida
-e stampa il codice TypeScript da incollare in guide.ts.
+Genera il codice TypeScript per prodottiConsigliati in guide.ts
+usando i dati già presenti nel database di Filament Finder.
 
-Usa le credenziali Amazon PA-API del gaming-deal-bot.
-
-Esecuzione:
-  cd "c:/Users/andre/Documents/BOT TELEGRAM/filament-finder/scripts"
-  /opt/gaming-deal-bot/venv/bin/python fetch-amazon-guide-products.py
+Esecuzione sul VPS:
+  cd /opt/filament-finder/scripts
+  python3 fetch-amazon-guide-products.py >> output.ts
+  # Poi copia i blocchi prodottiConsigliati in web/src/lib/guide.ts
 """
-import asyncio
-import hashlib
-import hmac
-import json
-import os
+
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Carica .env del gaming-deal-bot
-BOT_ENV = Path(__file__).parent.parent.parent / "gaming-deal-bot" / ".env"
-if BOT_ENV.exists():
-    for line in BOT_ENV.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, _, v = line.partition("=")
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+DB_URL = "postgresql://filament_app:ff_SecurePass2026@127.0.0.1/filament_finder"
 
-try:
-    import aiohttp
-except ImportError:
-    print("Installa aiohttp: pip install aiohttp", file=sys.stderr)
-    sys.exit(1)
-
-ACCESS_KEY   = os.getenv("AMAZON_ACCESS_KEY", "")
-SECRET_KEY   = os.getenv("AMAZON_SECRET_KEY", "")
-ASSOCIATE_TAG = os.getenv("AMAZON_ASSOCIATE_TAG", "pignabot-21")
-HOST = "webservices.amazon.it"
-REGION = "eu-west-1"
-
-
-def _sign(key: bytes, msg: str) -> bytes:
-    return hmac.new(key, msg.encode(), hashlib.sha256).digest()
-
-
-def _signing_key(key: str, date_stamp: str) -> bytes:
-    k = _sign(("AWS4" + key).encode(), date_stamp)
-    k = _sign(k, REGION)
-    k = _sign(k, "ProductAdvertisingAPI")
-    return _sign(k, "aws4_request")
-
-
-def _auth_headers(payload: str, target: str) -> dict:
-    now = datetime.now(timezone.utc)
-    amz_date  = now.strftime("%Y%m%dT%H%M%SZ")
-    date_stamp = now.strftime("%Y%m%d")
-    ct = "application/json; charset=UTF-8"
-    uri = "/paapi5/searchitems"
-
-    h2sign = {
-        "content-encoding": "amz-1.0",
-        "content-type": ct,
-        "host": HOST,
-        "x-amz-date": amz_date,
-        "x-amz-target": target,
-    }
-    signed = ";".join(sorted(h2sign))
-    canon_h = "".join(f"{k}:{v}\n" for k, v in sorted(h2sign.items()))
-    ph = hashlib.sha256(payload.encode()).hexdigest()
-    canon = "\n".join(["POST", uri, "", canon_h, signed, ph])
-    scope = f"{date_stamp}/{REGION}/ProductAdvertisingAPI/aws4_request"
-    s2s = "\n".join(["AWS4-HMAC-SHA256", amz_date, scope,
-                      hashlib.sha256(canon.encode()).hexdigest()])
-    sig = hmac.new(_signing_key(SECRET_KEY, date_stamp),
-                   s2s.encode(), hashlib.sha256).hexdigest()
-    auth = (f"AWS4-HMAC-SHA256 Credential={ACCESS_KEY}/{scope}, "
-            f"SignedHeaders={signed}, Signature={sig}")
-    return {**h2sign, "Authorization": auth}
-
-
-async def search_filaments(keyword: str, n: int = 3) -> list[dict]:
-    """Cerca filamenti su Amazon IT e ritorna i migliori n risultati."""
-    target = "com.amazon.paapi5.v1.ProductAdvertisingAPIv1.SearchItems"
-    payload = json.dumps({
-        "PartnerTag": ASSOCIATE_TAG,
-        "PartnerType": "Associates",
-        "Keywords": keyword,
-        "SearchIndex": "All",
-        "ItemCount": 10,
-        "Resources": [
-            "Images.Primary.Large",
-            "ItemInfo.Title",
-            "Offers.Listings.Price",
-        ],
-        "Marketplace": "www.amazon.it",
-    })
-    headers = _auth_headers(payload, target)
-    url = f"https://{HOST}/paapi5/searchitems"
-
-    async with aiohttp.ClientSession() as sess:
-        async with sess.post(url, headers=headers, data=payload,
-                             timeout=aiohttp.ClientTimeout(total=15)) as resp:
-            if resp.status != 200:
-                txt = await resp.text()
-                print(f"  [ERRORE {resp.status}] {txt[:300]}", file=sys.stderr)
-                return []
-            data = await resp.json()
-
-    results = []
-    for item in data.get("SearchResult", {}).get("Items", []):
-        asin  = item.get("ASIN", "")
-        title = item.get("ItemInfo", {}).get("Title", {}).get("DisplayValue", "")
-        image = item.get("Images", {}).get("Primary", {}).get("Large", {}).get("URL", "")
-        listings = item.get("Offers", {}).get("Listings", [])
-        price = listings[0].get("Price", {}).get("Amount") if listings else None
-
-        if not asin or not image:
-            continue
-
-        # Filtra risultati non pertinenti (nozzle, stampanti, accessori non filamenti)
-        tl = title.lower()
-        skip_words = ["nozzle", "ugello", "stampante", "printer", "hotend",
-                      "extruder", "estrusore", "bed", "piatto", "glass"]
-        if any(w in tl for w in skip_words):
-            continue
-
-        results.append({
-            "asin": asin,
-            "title": title,
-            "image": image,
-            "price": price,
-            "link": f"https://amzn.to/{{SHORT}}",  # placeholder, accorcia manualmente
-            "long_link": f"https://www.amazon.it/dp/{asin}?tag={ASSOCIATE_TAG}",
-        })
-        if len(results) >= n:
-            break
-
-    return results
-
-
-# Mappa guida → query di ricerca
-GUIDE_QUERIES = {
-    "pla":          "filamento PLA 1kg stampa 3D FDM",
-    "petg":         "filamento PETG 1kg stampa 3D FDM",
-    "abs-asa":      "filamento ABS ASA 1kg stampa 3D",
-    "tpu":          "filamento TPU flessibile 95A stampa 3D",
-    "nylon-pa":     "filamento Nylon PA12 stampa 3D",
-    "pla-cf":       "filamento fibra carbonio PLA CF stampa 3D",
+# Tipo guida → tipo DB + varianti preferite (ordine priorità)
+GUIDE_CONFIG = {
+    "pla": {
+        "tipo": "PLA",
+        "titolo_sezione": "Filamenti PLA consigliati",
+        "varianti_prefer": ["Matte", "Basic", "Plus", "Silk"],
+        "n": 4,
+    },
+    "petg": {
+        "tipo": "PETG",
+        "titolo_sezione": "Filamenti PETG consigliati",
+        "varianti_prefer": ["Basic", "HF", "Transparent"],
+        "n": 4,
+    },
+    "abs-asa": {
+        "tipo": "ASA",  # preferisci ASA, poi ABS
+        "tipo_alt": "ABS",
+        "titolo_sezione": "Filamenti ABS/ASA consigliati",
+        "varianti_prefer": ["Standard"],
+        "n": 4,
+    },
+    "tpu": {
+        "tipo": "TPU",
+        "titolo_sezione": "Filamenti TPU consigliati",
+        "varianti_prefer": ["95A", "90A"],
+        "n": 4,
+    },
+    "nylon-pa": {
+        "tipo": "NYLON",
+        "titolo_sezione": "Filamenti Nylon consigliati",
+        "varianti_prefer": ["PA12", "PA6"],
+        "n": 3,
+    },
+    "pla-cf": {
+        "tipo": "PLA-CF",
+        "titolo_sezione": "Filamenti in fibra di carbonio consigliati",
+        "varianti_prefer": ["Standard"],
+        "n": 3,
+    },
 }
 
-GUIDE_TITLES = {
-    "pla":      "Filamenti PLA consigliati",
-    "petg":     "Filamenti PETG consigliati",
-    "abs-asa":  "Filamenti ABS/ASA consigliati",
-    "tpu":      "Filamenti TPU consigliati",
-    "nylon-pa": "Filamenti Nylon consigliati",
-    "pla-cf":   "Filamenti CF consigliati",
-}
+BRAND_PRIORITY = ["Bambu Lab", "Polymaker", "eSUN", "SUNLU", "Elegoo", "3DJake"]
 
 
-def ts_product(p: dict, idx: int) -> str:
-    title = p["title"]
-    short = title[:50] + "..." if len(title) > 50 else title
-    brief = title[:24]
+def get_products(cur, tipo: str, n: int, tipo_alt: str | None = None):
+    """Restituisce i migliori N prodotti per tipo, con immagine e link shop."""
+    tipi = [tipo]
+    if tipo_alt:
+        tipi.append(tipo_alt)
+
+    cur.execute("""
+        SELECT
+            v.id,
+            v.brand,
+            v.tipo,
+            v.variante,
+            v.colore,
+            v.link_immagine,
+            v.peso_g,
+            v.diametro_mm,
+            v.prezzo_min,
+            (
+                SELECT vpl.link
+                FROM v_price_latest vpl
+                WHERE vpl.id_filament = v.id AND vpl.disponibile = TRUE
+                ORDER BY vpl.prezzo_finale ASC
+                LIMIT 1
+            ) AS shop_link,
+            (
+                SELECT s.nome
+                FROM v_price_latest vpl
+                JOIN shop s ON s.id = vpl.id_shop
+                WHERE vpl.id_filament = v.id AND vpl.disponibile = TRUE
+                ORDER BY vpl.prezzo_finale ASC
+                LIMIT 1
+            ) AS shop_nome
+        FROM v_filament_full v
+        WHERE v.tipo = ANY(%s)
+          AND v.link_immagine IS NOT NULL
+          AND v.diametro_mm = 1.75
+          AND v.peso_g = 1000
+          AND v.prezzo_min IS NOT NULL
+        ORDER BY v.prezzo_min ASC
+        LIMIT 30
+    """, (tipi,))
+
+    rows = cur.fetchall()
+
+    # Deduplica per brand: max 1 prodotto per brand
+    seen_brands = {}
+    for row in rows:
+        brand = row["brand"]
+        if brand not in seen_brands:
+            seen_brands[brand] = row
+
+    # Ordina per priorità brand poi prezzo
+    def brand_rank(row):
+        try:
+            return BRAND_PRIORITY.index(row["brand"])
+        except ValueError:
+            return len(BRAND_PRIORITY)
+
+    unique = sorted(seen_brands.values(), key=lambda r: (brand_rank(r), r["prezzo_min"] or 9999))
+    return unique[:n]
+
+
+def escape_ts(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+
+def format_product(row: dict, badge: str | None = None) -> str:
+    brand    = row["brand"]
+    tipo     = row["tipo"]
+    variante = row["variante"]
+    colore   = row["colore"] or "Black"
+    peso     = row["peso_g"]
+    prezzo   = row["prezzo_min"]
+    shop     = row["shop_nome"] or ""
+    link     = row["shop_link"] or ""
+    image    = row["link_immagine"] or ""
+
+    nome_completo = f"{brand} {tipo} {variante} {colore} {peso}g"
+    nome_breve    = f"{brand} {tipo} {variante}"[:24]
+    descrizione   = (
+        f"{brand} {tipo} {variante} — {colore}, {peso}g. "
+        f"Disponibile su {shop}"
+        + (f" a €{prezzo:.2f}" if prezzo else "")
+        + "."
+    )
+
+    badge_line = f'\n        badge: "{escape_ts(badge)}",' if badge else ""
+
     return f"""      {{
-        nome: "{short.replace('"', '\\"')}",
-        nomeBrevissimo: "{brief.replace('"', '\\"')}",
-        descrizione: "— aggiungi descrizione manuale —",
-        asin: "{p['asin']}",
-        imageUrl: "{p['image']}",
-        affiliateLink: "{p['long_link']}",  // TODO: accorci con amzn.to
+        nome: "{escape_ts(nome_completo)}",
+        nomeBrevissimo: "{escape_ts(nome_breve)}",
+        descrizione: "{escape_ts(descrizione)}",{badge_line}
+        imageUrl: "{escape_ts(image)}",
+        affiliateLink: "{escape_ts(link)}",
       }}"""
 
 
-async def main():
-    if not ACCESS_KEY or not SECRET_KEY:
-        print("ERRORE: AMAZON_ACCESS_KEY / AMAZON_SECRET_KEY non configurati.", file=sys.stderr)
-        print(f"Cerca in: {BOT_ENV}", file=sys.stderr)
+def main():
+    try:
+        conn = psycopg2.connect(DB_URL)
+    except Exception as e:
+        print(f"Errore connessione DB: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Associate tag: {ASSOCIATE_TAG}\n")
-    print("=" * 70)
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    print("// ── OUTPUT GENERATO DA fetch-amazon-guide-products.py ──────────────────")
+    print("// Copia i blocchi prodottiConsigliati in web/src/lib/guide.ts\n")
 
-    for slug, query in GUIDE_QUERIES.items():
-        print(f"\n// ── {slug} ──────────────────────────────────────────────────────")
-        print(f'//    Aggiungere in GUIDE (slug: "{slug}") → prodottiConsigliati:')
-        print(f"//    Titolo sezione: \"{GUIDE_TITLES[slug]}\"")
-        print(f"\n  prodottiConsigliati: [")
+    for slug, cfg in GUIDE_CONFIG.items():
+        tipo     = cfg["tipo"]
+        tipo_alt = cfg.get("tipo_alt")
+        n        = cfg["n"]
+        titolo   = cfg["titolo_sezione"]
 
-        print(f"  // Ricerca: {query!r}", file=sys.stderr)
-        results = await search_filaments(query, n=3)
-        await asyncio.sleep(1.1)  # rispetta rate limit PA-API (1 req/s)
+        print(f"\n// ── {slug} ({tipo}) ──────────────────────────────────────────────────")
+        rows = get_products(cur, tipo, n, tipo_alt)
 
-        if not results:
-            print("    // Nessun risultato — esegui manualmente")
-        else:
-            for i, p in enumerate(results):
-                print(ts_product(p, i) + ("," if i < len(results) - 1 else ""))
+        if not rows:
+            print(f"    // ATTENZIONE: nessun prodotto trovato per {tipo}")
+            continue
 
-        print("  ],")
+        print(f"    // Titolo sezione: \"{titolo}\"")
+        print(f"    prodottiConsigliati: [")
 
-    print("\n" + "=" * 70)
-    print("\nNOTA: sostituisci i link lunghi con link amzn.to per brevità.")
-    print("NOTA: rivedi nome/descrizione manualmente per ogni prodotto.")
+        badges = ["Best Value", "Qualità", "Versatile", "Premium"]
+        for i, row in enumerate(rows):
+            badge = badges[i] if i < len(badges) else None
+            comma = "," if i < len(rows) - 1 else ""
+            print(format_product(row, badge) + comma)
+
+        print("    ],")
+
+    cur.close()
+    conn.close()
+    print("\n// ── FINE OUTPUT ─────────────────────────────────────────────────────────")
+    print("// Ricorda di rivedere nomi e descrizioni manualmente!", file=sys.stderr)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

@@ -3,8 +3,8 @@ export interface ProdottoConsigliato {
   nomeBrevissimo: string; // max ~25 caratteri per il titolo card
   descrizione: string;
   badge?: string;
-  asin: string;
-  imageUrl?: string; // URL diretto immagine Amazon (click destro → copia indirizzo immagine)
+  asin?: string;     // solo per prodotti Amazon (per compatibilità legacy)
+  imageUrl?: string;
   affiliateLink: string;
 }
 
@@ -22,6 +22,8 @@ export interface Guida {
   sezioni: { titolo: string; testo: string }[];
   correlate?: string[]; // slug guide correlate
   prodottiConsigliati?: ProdottoConsigliato[];
+  titoloProdotti?: string;       // es. "Filamenti PLA consigliati"
+  descrizioneProdotti?: string;  // testo sotto il titolo
 }
 
 export const GUIDE: Guida[] = [
@@ -80,6 +82,26 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["petg", "pla-cf", "come-scegliere"],
+    titoloProdotti: "Filamenti PLA consigliati",
+    descrizioneProdotti: "I migliori PLA selezionati dai nostri shop partner. Confronta i prezzi e trova quello più adatto a te.",
+    prodottiConsigliati: [
+      {
+        nome: "eSUN PLA Basic Blu scuro 1000g",
+        nomeBrevissimo: "eSUN PLA Basic",
+        descrizione: "Ottimo PLA entry-level di eSUN: qualità costante, prezzo imbattibile. Disponibile in decine di colori.",
+        badge: "Best Value",
+        imageUrl: "https://ueeshop.ly200-cdn.com/u_file/UPBC/UPBC810/2411/25/products/5e619cb995.jpg",
+        affiliateLink: "https://www.awin1.com/cread.php?awinmid=99267&awinaffid=2803624&ued=https%3A%2F%2Fesun3dstoreeu.com%2Fproducts%2Fepla",
+      },
+      {
+        nome: "Elegoo PLA Basic 1000g",
+        nomeBrevissimo: "Elegoo PLA Basic",
+        descrizione: "PLA affidabile di Elegoo con ottima adesione e pochi problemi di stampa. Buon rapporto qualità-prezzo.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/46661_a9f471a8.128x128.webp",
+        affiliateLink: "https://eu.elegoo.com/products/pla-filament-1-75mm-colored-1kg?variant=47394241216788",
+      },
+    ],
   },
 
   {
@@ -136,6 +158,34 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["pla", "abs-asa", "come-scegliere"],
+    titoloProdotti: "Filamenti PETG consigliati",
+    descrizioneProdotti: "PETG selezionato dai migliori shop: resistente, versatile e facile da stampare.",
+    prodottiConsigliati: [
+      {
+        nome: "Bambu Lab PETG Transparent 1000g",
+        nomeBrevissimo: "Bambu Lab PETG",
+        descrizione: "PETG trasparente di alta qualità Bambu Lab. Ottima scorrevolezza, compatibile con tutte le stampanti FDM.",
+        badge: "Best Value",
+        imageUrl: "https://m.media-amazon.com/images/I/41v5h12dsML._AC_UL320_.jpg",
+        affiliateLink: "https://www.amazon.it/dp/B0F24KWRS5?tag=pignabot-21",
+      },
+      {
+        nome: "Elegoo PETG Basic 1000g",
+        nomeBrevissimo: "Elegoo PETG Basic",
+        descrizione: "PETG affidabile di Elegoo: buona resistenza meccanica e termica, basso stringing.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/87475_83142ceb.128x128.webp",
+        affiliateLink: "https://eu.elegoo.com/products/rapid-petg-filament-1-75mm-colored-1kg?variant=48802771566868",
+      },
+      {
+        nome: "Sunlu PETG Basic 1000g",
+        nomeBrevissimo: "Sunlu PETG Basic",
+        descrizione: "PETG economico di Sunlu con ottima adesione tra layer. Disponibile in molti colori.",
+        badge: "Versatile",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/86620_175576053068a6c792ab190.128x128.png",
+        affiliateLink: "https://www.3djake.it/sunlu/petg-chocolate",
+      },
+    ],
   },
 
   {
@@ -187,6 +237,34 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["petg", "nylon-pa", "come-scegliere"],
+    titoloProdotti: "Filamenti ABS/ASA consigliati",
+    descrizioneProdotti: "ABS e ASA selezionati per resistenza termica e meccanica elevata. Richiedono enclosure.",
+    prodottiConsigliati: [
+      {
+        nome: "eSUN ABS Standard 1000g",
+        nomeBrevissimo: "eSUN ABS Standard",
+        descrizione: "ABS classico di eSUN: buona resistenza termica fino a 100 °C, levigabile con acetone.",
+        badge: "Best Value",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/32261_72f7bfc2.128x128.jpg",
+        affiliateLink: "https://www.3djake.it/esun/abs-yellow-5",
+      },
+      {
+        nome: "Elegoo ASA Standard Nero 1000g",
+        nomeBrevissimo: "Elegoo ASA Standard",
+        descrizione: "ASA di Elegoo resistente ai raggi UV: ideale per applicazioni outdoor come supporti e pannelli.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/46721_7d031e42.128x128.webp",
+        affiliateLink: "https://eu.elegoo.com/products/asa-filament-1-75mm-colored-1kg?variant=47555441885460",
+      },
+      {
+        nome: "Sunlu ABS Standard 1000g",
+        nomeBrevissimo: "Sunlu ABS Standard",
+        descrizione: "ABS economico di Sunlu con buona consistenza di stampa. Adatto a parti meccaniche interne.",
+        badge: "Versatile",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/76775_17465241466819d7f2a16ae.128x128.png",
+        affiliateLink: "https://www.3djake.it/sunlu/abs-red-7",
+      },
+    ],
   },
 
   {
@@ -243,6 +321,34 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["pla", "petg", "come-scegliere"],
+    titoloProdotti: "Filamenti TPU consigliati",
+    descrizioneProdotti: "TPU flessibile selezionato per qualità e stampabilità. Shore 95A: il più equilibrato per iniziare.",
+    prodottiConsigliati: [
+      {
+        nome: "Polymaker PolyFlex TPU95 1000g",
+        nomeBrevissimo: "Polymaker TPU 95A",
+        descrizione: "TPU 95A di Polymaker: ottima flessibilità, basso stringing. Compatibile con estrusori Bowden e Direct Drive.",
+        badge: "Best Value",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/28843_0061e651.128x128.png",
+        affiliateLink: "https://www.3djake.it/polymaker/filamento-polyflex-yellow",
+      },
+      {
+        nome: "eSUN eTPU-95A 1000g",
+        nomeBrevissimo: "eSUN TPU 95A",
+        descrizione: "TPU 95A di eSUN: affidabile e ben testato. Ottima resistenza all'abrasione e agli oli.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/32715_f5c60aae.128x128.jpg",
+        affiliateLink: "https://www.3djake.it/esun/tpu-95a-rainbow-b",
+      },
+      {
+        nome: "Elegoo TPU 95A 1000g",
+        nomeBrevissimo: "Elegoo TPU 95A",
+        descrizione: "TPU di Elegoo al prezzo più competitivo: buona elasticità e finitura superficiale.",
+        badge: "Versatile",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/46673_13f14fc8.128x128.jpg",
+        affiliateLink: "https://eu.elegoo.com/products/tpu-filament-1-75mm-colored-1kg?variant=47962766213396",
+      },
+    ],
   },
 
   {
@@ -294,6 +400,34 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["abs-asa", "pla-cf", "come-scegliere"],
+    titoloProdotti: "Filamenti Nylon consigliati",
+    descrizioneProdotti: "Nylon e PA selezionati per resistenza meccanica estrema. Essicca sempre prima di usarli.",
+    prodottiConsigliati: [
+      {
+        nome: "Sunlu Nylon PA12 1000g",
+        nomeBrevissimo: "Sunlu Nylon PA12",
+        descrizione: "PA12 di Sunlu: meno igroscopico del PA6, ottima resistenza meccanica e flessibilità strutturale.",
+        badge: "Best Value",
+        imageUrl: "https://cdn.shopify.com/s/files/1/0704/0027/8683/files/PA12-CF_1_1a719201-be95-4755-9fb2-409006ef3b62.png?v=1770709583",
+        affiliateLink: "https://it.store.sunlu.com/products/sunlu-engineering-filament-kollektion-epa-pcabs-pa6cf-pa12cf-pa6gf-1kg?variant=46808545165467",
+      },
+      {
+        nome: "Fiberlogy Nylon PA12 Naturale 1000g",
+        nomeBrevissimo: "Fiberlogy Nylon PA12",
+        descrizione: "PA12 premium di Fiberlogy: tolleranze eccellenti e consistenza di stampa superiore.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/33859_423fb16f.128x128.jpg",
+        affiliateLink: "https://www.3djake.it/fiberlogy/nylon-pa12-natural",
+      },
+      {
+        nome: "Polymaker CoPA Nylon PA6/66 Nero 1000g",
+        nomeBrevissimo: "Polymaker CoPA Nylon",
+        descrizione: "Copolimero PA6/66 di Polymaker: massima resistenza termica e meccanica tra i Nylon comuni.",
+        badge: "Versatile",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/30299_f1ff4ee8.128x128.png",
+        affiliateLink: "https://www.3djake.it/polymaker/nylon-copa-6-6-6-black",
+      },
+    ],
   },
 
   {
@@ -344,6 +478,34 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["pla", "nylon-pa", "come-scegliere"],
+    titoloProdotti: "Filamenti in fibra di carbonio consigliati",
+    descrizioneProdotti: "CF selezionati per rigidità e aspetto professionale. Richiedono nozzle hardened obbligatoriamente.",
+    prodottiConsigliati: [
+      {
+        nome: "Bambu Lab PLA-CF Nero 1000g",
+        nomeBrevissimo: "Bambu Lab PLA-CF",
+        descrizione: "PLA-CF di Bambu Lab: il più facile da stampare tra i CF, ottima finitura opaca grigio-nero.",
+        badge: "Best Value",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/48115_9c00e495.128x128.webp",
+        affiliateLink: "https://www.3djake.it/bambu-lab/pla-cf-black",
+      },
+      {
+        nome: "Polymaker PolyLite PLA-CF Nero 1000g",
+        nomeBrevissimo: "Polymaker PLA-CF",
+        descrizione: "PLA-CF di Polymaker: rigidità superiore, superficie opaca professionale. Stampa a 200–220 °C.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/28271_aed6d414.128x128.png",
+        affiliateLink: "https://www.3djake.it/polymaker/polylite-pla-cf-black",
+      },
+      {
+        nome: "eSUN PLA-CF Standard 1000g",
+        nomeBrevissimo: "eSUN PLA-CF",
+        descrizione: "PLA-CF economico di eSUN: buon compromesso tra prestazioni e prezzo, ideale per iniziare con i filamenti CF.",
+        badge: "Versatile",
+        imageUrl: "https://ueeshop.ly200-cdn.com/u_file/UPBC/UPBC810/2409/13/products/8cb5091f28.jpg",
+        affiliateLink: "https://www.amazon.it/dp/B0CNC835PY?tag=pignabot-21",
+      },
+    ],
   },
 
   {
