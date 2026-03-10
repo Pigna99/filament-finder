@@ -1557,7 +1557,34 @@ AMAZON_QUERIES = [
     ("Bambu Lab filamento PLA Matte",   "Bambu Lab"),
     ("Bambu Lab filamento PETG HF",     "Bambu Lab"),
     ("Bambu Lab filamento ASA 1kg",     "Bambu Lab"),
-    # Generico per catturare altri brand
+    # Creality
+    ("Creality filamento PLA 1kg",      "Creality"),
+    ("Creality filamento PETG 1kg",     "Creality"),
+    # Eryone
+    ("Eryone filamento PLA 1kg",        "Eryone"),
+    ("Eryone filamento PETG 1kg",       "Eryone"),
+    # Hatchbox
+    ("Hatchbox filamento PLA 1kg",      "Hatchbox"),
+    ("Hatchbox filamento PETG 1kg",     "Hatchbox"),
+    # TECBEARS
+    ("TECBEARS filamento PLA 1kg",      "TECBEARS"),
+    ("TECBEARS filamento PETG 1kg",     "TECBEARS"),
+    # ANYCUBIC
+    ("ANYCUBIC filamento PLA 1kg",      "ANYCUBIC"),
+    ("ANYCUBIC filamento PETG 1kg",     "ANYCUBIC"),
+    # Voxelab
+    ("Voxelab filamento PLA 1kg",       "Voxelab"),
+    # GEEETECH
+    ("GEEETECH filamento PLA 1kg",      "GEEETECH"),
+    # Kingroon
+    ("Kingroon filamento PLA 1kg",      "Kingroon"),
+    # Basicfil
+    ("Basicfil filamento PLA 1kg",      "Basicfil"),
+    ("Basicfil filamento PETG 1kg",     "Basicfil"),
+    # Polymaker
+    ("Polymaker filamento PLA 1kg",     "Polymaker"),
+    ("Polymaker filamento PETG 1kg",    "Polymaker"),
+    # Generico per catturare altri brand noti
     ("filamento PLA 1kg stampante 3D",  None),
     ("filamento PETG 1kg stampante 3D", None),
     ("filamento TPU flessibile 1kg",    None),
