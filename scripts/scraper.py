@@ -1517,6 +1517,155 @@ def scrape_3djake(db: DB):
     log.info(f"3DJake IT: {total} prodotti processati, {skipped} saltati")
 
 
+# ── Scraper Prusament ─────────────────────────────────────────────────────────
+
+PRUSAMENT_BASE = "https://prusament.com"
+PRUSAMENT_SHOP_BASE = "https://www.prusa3d.com"
+
+# Mappa slug materiale → (tipo_filamento, variante)
+PRUSAMENT_MATERIAL_MAP: dict[str, tuple[str, str]] = {
+    "pla":                              ("PLA",     "Standard"),
+    "prusament-pla-recycled":           ("PLA",     "Recycled"),
+    "prusament-rpla":                   ("PLA",     "Recycled"),
+    "prusament-petg":                   ("PETG",    "Standard"),
+    "prusament-petg-recycled":          ("PETG",    "Recycled"),
+    "prusament-petg-carbon-fiber":      ("PETG-CF", "Standard"),
+    "prusament-asa":                    ("ASA",     "Standard"),
+    "prusament-tpu-95a":                ("TPU",     "95A"),
+    "prusament-pc-blend":               ("PC",      "Standard"),
+    "prusament-pc-blend-carbon-fiber":  ("PC-CF",   "Standard"),
+    "prusament-pa11-nylon-carbon-fiber":("PA-CF",   "Standard"),
+    "prusament-pvb":                    ("PVB",     "Standard"),
+    "prusament-woodfill":               ("PLA",     "Wood Fill"),
+}
+
+
+def scrape_prusament(db: DB):
+    log.info("=== PRUSAMENT ===")
+    brand_id = db.get_brand_id("Prusament")
+    shop_id = db.get_shop_id("Prusa")
+    if not brand_id or not shop_id:
+        log.error("Brand 'Prusament' o shop 'Prusa' non trovato nel DB")
+        return
+    log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
+
+    # 1. Leggi sitemap materiali
+    try:
+        r = requests.get(f"{PRUSAMENT_BASE}/prusa_material-sitemap1.xml", headers=HEADERS, timeout=15)
+        r.raise_for_status()
+        root = ET.fromstring(r.text)
+        ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        all_urls = [u.find("sm:loc", ns).text for u in root.findall("sm:url", ns) if u.find("sm:loc", ns) is not None]
+    except Exception as e:
+        log.error(f"Errore sitemap Prusament: {e}")
+        return
+
+    # Deduplicazione slug (la sitemap ha duplicati per hreflang)
+    seen_slugs: set[str] = set()
+    material_pages: list[tuple[str, str]] = []
+    for url in all_urls:
+        # Prendi solo le URL in inglese (senza prefisso lingua /it/ /de/ /pl/)
+        parts = url.rstrip("/").split("/")
+        # /materials/slug → parts[-1] è slug, parts[-2] è "materials"
+        if len(parts) < 2 or parts[-2] != "materials":
+            continue
+        slug = parts[-1]
+        if slug not in seen_slugs and slug in PRUSAMENT_MATERIAL_MAP:
+            seen_slugs.add(slug)
+            material_pages.append((slug, url))
+
+    log.info(f"Trovati {len(material_pages)} materiali da processare")
+
+    _processed_pairs: set[tuple[int, int]] = set()
+    total = 0
+
+    for slug, mat_url in material_pages:
+        type_nome, variant_nome = PRUSAMENT_MATERIAL_MAP[slug]
+        log.info(f"  Materiale: {slug} → {type_nome} {variant_nome}")
+
+        try:
+            r = requests.get(mat_url, headers=HEADERS, timeout=15)
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, "lxml")
+        except Exception as e:
+            log.warning(f"  Errore fetch {mat_url}: {e}")
+            continue
+
+        # 2. Trova tutti i link a prusa3d.com/product/
+        for a in soup.find_all("a", href=re.compile(r"prusa3d\.com/product/")):
+            product_url = a["href"].split("?")[0].rstrip("/")
+
+            # Cerca il prezzo EUR nel contenitore del link
+            container = a
+            for _ in range(5):  # risali fino a 5 livelli
+                container = container.parent
+                if container is None:
+                    break
+                txt = container.get_text(" ", strip=True)
+                eur_m = re.search(r'(\d+\.\d+)\s*EUR', txt)
+                if eur_m:
+                    break
+            else:
+                continue
+            if not eur_m:
+                continue
+            prezzo = float(eur_m.group(1))
+
+            # Estrai colore e peso dallo slug dell'URL
+            url_slug = product_url.rstrip("/").split("/")[-1]
+            # Rimuovi prefisso "prusament-{tipo}-"
+            type_prefix = f"prusament-{slug.replace('prusament-', '').replace('pla-recycled','pla').replace('tpu-95a','tpu')}-"
+            color_slug = url_slug
+            if color_slug.lower().startswith("prusament-"):
+                # rimuovi "prusament-{tipo_base}-"
+                for pfx in [f"prusament-{type_nome.lower().replace('-cf','').replace('-','')}-",
+                             f"prusament-{type_nome.lower()}-"]:
+                    if color_slug.lower().startswith(pfx):
+                        color_slug = color_slug[len(pfx):]
+                        break
+
+            is_refill = "refill" in color_slug.lower()
+            color_slug = re.sub(r'-refill$', '', color_slug, flags=re.I)
+            peso_g = detect_weight(color_slug) or 1000
+            color_slug = re.sub(r'-?\d+kg(-nfc)?$', '', color_slug, flags=re.I).strip("-")
+            color_display = color_slug.replace("-", " ").title()
+
+            colore, colore_hex, colore_famiglia = detect_color(color_display)
+
+            type_id = db.get_or_create_type(type_nome)
+            if type_id < 0:
+                continue
+            variant_id = db.get_or_create_variant(type_id, variant_nome)
+            if variant_id < 0:
+                continue
+
+            fil_id = db.get_or_create_filament(
+                variant_id, brand_id,
+                colore or color_display, colore_hex, colore_famiglia,
+                peso_g, 1.75, None, None,
+                is_refill=is_refill,
+            )
+            if fil_id < 0:
+                continue
+
+            pair = (fil_id, shop_id)
+            if pair in _processed_pairs:
+                continue
+            _processed_pairs.add(pair)
+
+            fs_id = db.get_or_create_filament_shop(fil_id, shop_id, product_url, affiliazione=False)
+            if fs_id < 0:
+                continue
+
+            db.insert_price(fs_id, prezzo, None, True)
+            total += 1
+            log.debug(f"    OK: {type_nome} {color_display} {peso_g}g refill={is_refill} → €{prezzo}")
+
+        time.sleep(random.uniform(1, 2))
+
+    log.info(f"Prusament: {total} varianti processate")
+
+
 # ── Scraper Amazon IT ─────────────────────────────────────────────────────────
 
 AMAZON_TAG = "pignabot-21"
@@ -1809,7 +1958,7 @@ def scrape_amazon(db: DB):
 
 def main():
     parser = argparse.ArgumentParser(description="Filament Finder Scraper")
-    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "3djake", "amazon", "all"], default="all")
+    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "3djake", "amazon", "prusament", "all"], default="all")
     parser.add_argument("--dry-run", action="store_true", help="Non scrive nel DB")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -1843,6 +1992,9 @@ def main():
 
     if args.shop in ("3djake", "all"):
         scrape_3djake(db)
+
+    if args.shop in ("prusament", "all"):
+        scrape_prusament(db)
 
     if args.shop in ("amazon", "all"):
         scrape_amazon(db)
