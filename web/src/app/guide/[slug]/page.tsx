@@ -164,7 +164,7 @@ export default async function GuidaPage({ params }: Props) {
                     )}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${p.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=IT&ServiceVersion=20070822&WS=1&tag=pignabot-21`}
+                      src={`https://m.media-amazon.com/images/P/${p.asin}._SL500_.jpg`}
                       alt={p.nomeBrevissimo}
                       className="max-h-36 max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"

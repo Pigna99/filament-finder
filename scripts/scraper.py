@@ -550,6 +550,7 @@ def process_shopify_product(
     default_weight_g: int = 1000, url_extra_params: str = "",
     affiliazione: bool = False,
     skip_variant_keywords: list[str] | None = None,
+    processed_pairs: set[tuple[int, int]] | None = None,
 ) -> int:
     """
     Processa un prodotto Shopify e inserisce filament + prezzi nel DB.
@@ -589,7 +590,8 @@ def process_shopify_product(
     use_main_image_fallback = not multi_color or has_variant_images
 
     _skip_kws = [k.lower() for k in (skip_variant_keywords or [])]
-    _processed_pairs: set[tuple[int, int]] = set()  # (fil_id, shop_id) già processati
+    # Usa il set condiviso passato dall'esterno (per deduplicare cross-prodotto), oppure uno locale
+    _processed_pairs: set[tuple[int, int]] = processed_pairs if processed_pairs is not None else set()
 
     count = 0
     for variant in variants_list:
