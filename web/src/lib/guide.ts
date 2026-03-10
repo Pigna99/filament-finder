@@ -1,3 +1,12 @@
+export interface ProdottoConsigliato {
+  nome: string;
+  nomeBrevissimo: string; // max ~25 caratteri per il titolo card
+  descrizione: string;
+  badge?: string;
+  asin: string;
+  affiliateLink: string;
+}
+
 export interface Guida {
   slug: string;
   titolo: string;
@@ -11,6 +20,7 @@ export interface Guida {
   consigli: string[];
   sezioni: { titolo: string; testo: string }[];
   correlate?: string[]; // slug guide correlate
+  prodottiConsigliati?: ProdottoConsigliato[];
 }
 
 export const GUIDE: Guida[] = [
@@ -417,6 +427,44 @@ export const GUIDE: Guida[] = [
       },
     ],
     correlate: ["come-scegliere", "pla", "nylon-pa"],
+    prodottiConsigliati: [
+      {
+        nome: "eSUN eBOX Lite",
+        nomeBrevissimo: "eSUN eBOX Lite",
+        descrizione:
+          "Dry box compatta con riscaldamento fino a 55 °C. Puoi stampare direttamente dalla scatola senza togliere la bobina. Ottimo per chi inizia.",
+        badge: "Best Value",
+        asin: "B094XXJMT6",
+        affiliateLink: "https://amzn.to/4s0QBZP",
+      },
+      {
+        nome: "SUNLU FilaDryer S1 Plus",
+        nomeBrevissimo: "SUNLU FilaDryer S1+",
+        descrizione:
+          "Essiccatore con ventola integrata per calore uniforme. Compatibile con PLA, PETG, ABS, Nylon e TPU. Display digitale e timer.",
+        badge: "Bestseller",
+        asin: "B09HJL95RH",
+        affiliateLink: "https://amzn.to/3N91w4E",
+      },
+      {
+        nome: "Creality Dryer Box Pro",
+        nomeBrevissimo: "Creality Dryer Box Pro",
+        descrizione:
+          "Riscaldamento 360° per un'asciugatura uniforme. Compatibile con filamenti 1.75 e 2.85 mm. Buona capacità e costruzione solida.",
+        badge: "Versatile",
+        asin: "B0DN5LK4HH",
+        affiliateLink: "https://amzn.to/46S5YeD",
+      },
+      {
+        nome: "SUNLU AMS Heater (4 bobine)",
+        nomeBrevissimo: "SUNLU AMS Heater",
+        descrizione:
+          "Progettato per Bambu Lab AMS Gen 1: asciuga e stampa fino a 4 bobine contemporaneamente. Raggiunge 70 °C in soli 20 minuti.",
+        badge: "Per Bambu Lab",
+        asin: "B0FJL1G9KY",
+        affiliateLink: "https://amzn.to/40oS28l",
+      },
+    ],
   },
 ];
 

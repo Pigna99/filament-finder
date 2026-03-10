@@ -134,6 +134,66 @@ export default async function GuidaPage({ params }: Props) {
           </div>
         )}
 
+        {/* Prodotti consigliati */}
+        {g.prodottiConsigliati && g.prodottiConsigliati.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-semibold text-zinc-100">Essiccatori consigliati</h2>
+              <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2.5 py-0.5 font-medium">
+                Link affiliato Amazon
+              </span>
+            </div>
+            <p className="text-zinc-400 text-sm mb-5">
+              Questi sono gli essiccatori che consigliamo per mantenere le bobine asciutte e stampare senza problemi. I prezzi vengono aggiornati direttamente su Amazon.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {g.prodottiConsigliati.map((p) => (
+                <a
+                  key={p.asin}
+                  href={p.affiliateLink}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-2xl overflow-hidden transition-all hover:shadow-lg hover:shadow-black/40"
+                >
+                  {/* Immagine prodotto */}
+                  <div className="relative bg-zinc-800 flex items-center justify-center p-4 h-44">
+                    {p.badge && (
+                      <span className="absolute top-3 left-3 text-xs font-semibold bg-emerald-600 text-white rounded-full px-2.5 py-0.5 z-10">
+                        {p.badge}
+                      </span>
+                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${p.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=IT&ServiceVersion=20070822&WS=1&tag=pignabot-21`}
+                      alt={p.nomeBrevissimo}
+                      className="max-h-36 max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  </div>
+                  {/* Info prodotto */}
+                  <div className="flex flex-col flex-1 p-4 gap-3">
+                    <h3 className="text-zinc-100 font-semibold text-sm leading-snug">
+                      {p.nome}
+                    </h3>
+                    <p className="text-zinc-400 text-xs leading-relaxed flex-1">
+                      {p.descrizione}
+                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-zinc-500">Vedi prezzo aggiornato</span>
+                      <span className="text-sm font-semibold text-amber-400 group-hover:text-amber-300 transition-colors flex items-center gap-1">
+                        Amazon
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* CTA catalogo */}
         {g.tipo && (
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
