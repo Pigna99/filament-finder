@@ -4,6 +4,7 @@ export interface ProdottoConsigliato {
   descrizione: string;
   badge?: string;
   asin: string;
+  imageUrl?: string; // URL diretto immagine Amazon (click destro → copia indirizzo immagine)
   affiliateLink: string;
 }
 
@@ -435,6 +436,7 @@ export const GUIDE: Guida[] = [
           "Dry box compatta con riscaldamento fino a 55 °C. Puoi stampare direttamente dalla scatola senza togliere la bobina. Ottimo per chi inizia.",
         badge: "Best Value",
         asin: "B094XXJMT6",
+        imageUrl: "https://m.media-amazon.com/images/I/618dWl0PuuL._AC_SL1500_.jpg",
         affiliateLink: "https://amzn.to/4s0QBZP",
       },
       {
@@ -444,6 +446,7 @@ export const GUIDE: Guida[] = [
           "Essiccatore con ventola integrata per calore uniforme. Compatibile con PLA, PETG, ABS, Nylon e TPU. Display digitale e timer.",
         badge: "Bestseller",
         asin: "B09HJL95RH",
+        imageUrl: "https://m.media-amazon.com/images/I/7110An+nO1L._SL1500_.jpg",
         affiliateLink: "https://amzn.to/3N91w4E",
       },
       {
@@ -453,6 +456,7 @@ export const GUIDE: Guida[] = [
           "Riscaldamento 360° per un'asciugatura uniforme. Compatibile con filamenti 1.75 e 2.85 mm. Buona capacità e costruzione solida.",
         badge: "Versatile",
         asin: "B0DN5LK4HH",
+        imageUrl: "https://m.media-amazon.com/images/I/71hBHGU32yL._SL1500_.jpg",
         affiliateLink: "https://amzn.to/46S5YeD",
       },
       {
@@ -462,6 +466,7 @@ export const GUIDE: Guida[] = [
           "Progettato per Bambu Lab AMS Gen 1: asciuga e stampa fino a 4 bobine contemporaneamente. Raggiunge 70 °C in soli 20 minuti.",
         badge: "Per Bambu Lab",
         asin: "B0FJL1G9KY",
+        imageUrl: "https://m.media-amazon.com/images/I/61pWwR-JtlL._AC_SL1500_.jpg",
         affiliateLink: "https://amzn.to/40oS28l",
       },
     ],

@@ -156,19 +156,28 @@ export default async function GuidaPage({ params }: Props) {
                   className="group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-2xl overflow-hidden transition-all hover:shadow-lg hover:shadow-black/40"
                 >
                   {/* Immagine prodotto */}
-                  <div className="relative bg-zinc-800 flex items-center justify-center p-4 h-44">
+                  <div className={`relative flex items-center justify-center p-4 h-44 ${p.imageUrl ? "bg-zinc-800" : "bg-white"}`}>
                     {p.badge && (
                       <span className="absolute top-3 left-3 text-xs font-semibold bg-emerald-600 text-white rounded-full px-2.5 py-0.5 z-10">
                         {p.badge}
                       </span>
                     )}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`https://m.media-amazon.com/images/P/${p.asin}._SL500_.jpg`}
-                      alt={p.nomeBrevissimo}
-                      className="max-h-36 max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
+                    {p.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.imageUrl}
+                        alt={p.nomeBrevissimo}
+                        className="max-h-36 max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="text-zinc-600 text-xs text-center px-4">
+                        <svg className="w-12 h-12 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {p.nomeBrevissimo}
+                      </div>
+                    )}
                   </div>
                   {/* Info prodotto */}
                   <div className="flex flex-col flex-1 p-4 gap-3">
