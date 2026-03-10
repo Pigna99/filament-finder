@@ -16,6 +16,7 @@ Uso:
 import re
 import json
 import time
+import random
 import logging
 import argparse
 import sys
@@ -25,6 +26,7 @@ from typing import Optional
 from urllib.parse import quote
 
 import requests
+from bs4 import BeautifulSoup
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -1509,11 +1511,271 @@ def scrape_3djake(db: DB):
     log.info(f"3DJake IT: {total} prodotti processati, {skipped} saltati")
 
 
+# ── Scraper Amazon IT ─────────────────────────────────────────────────────────
+
+AMAZON_TAG = "pignabot-21"
+AMAZON_BASE = "https://www.amazon.it"
+
+# User-agent pool per rotazione
+AMAZON_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+]
+
+# Query di ricerca per tipologia di filamento (brand × tipo)
+# Formato: (query_string, brand_hint) — brand_hint per filtrare brand in DB
+AMAZON_QUERIES = [
+    # Elegoo
+    ("Elegoo filamento PLA 1kg",        "Elegoo"),
+    ("Elegoo filamento PETG 1kg",       "Elegoo"),
+    ("Elegoo filamento PLA+ 1kg",       "Elegoo"),
+    ("Elegoo filamento ABS 1kg",        "Elegoo"),
+    ("Elegoo PLA Rapid filamento",      "Elegoo"),
+    # SUNLU
+    ("SUNLU filamento PLA 1kg",         "Sunlu"),
+    ("SUNLU filamento PETG 1000g",      "Sunlu"),
+    ("SUNLU filamento TPU 1kg",         "Sunlu"),
+    ("SUNLU filamento PLA+ 1kg",        "Sunlu"),
+    # eSUN
+    ("eSUN filamento PLA+ 1kg",         "eSUN"),
+    ("eSUN filamento PETG 1kg",         "eSUN"),
+    ("eSUN filamento ABS+ 1kg",         "eSUN"),
+    ("eSUN filamento TPU 1kg",          "eSUN"),
+    # Bambu Lab
+    ("Bambu Lab filamento PLA Basic",   "Bambu Lab"),
+    ("Bambu Lab filamento PLA Matte",   "Bambu Lab"),
+    ("Bambu Lab filamento PETG HF",     "Bambu Lab"),
+    ("Bambu Lab filamento ASA 1kg",     "Bambu Lab"),
+    # Generico per catturare altri brand
+    ("filamento PLA 1kg stampante 3D",  None),
+    ("filamento PETG 1kg stampante 3D", None),
+    ("filamento TPU flessibile 1kg",    None),
+    ("filamento PLA-CF carbonio 1kg",   None),
+]
+
+
+def _amazon_session() -> requests.Session:
+    """Crea una sessione requests con header Amazon-compatible."""
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": random.choice(AMAZON_USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Referer": "https://www.amazon.it/",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    })
+    return s
+
+
+def _parse_amazon_price(soup_elem) -> Optional[float]:
+    """Estrae il prezzo (float) da un contenitore a-price di Amazon."""
+    if not soup_elem:
+        return None
+    whole = soup_elem.find("span", class_="a-price-whole")
+    frac = soup_elem.find("span", class_="a-price-fraction")
+    if whole:
+        txt = whole.get_text(strip=True).replace(".", "").replace(",", "") + "." + (frac.get_text(strip=True) if frac else "00")
+        try:
+            return float(txt)
+        except ValueError:
+            pass
+    # Fallback: testo completo del contenitore
+    raw = soup_elem.get_text(strip=True).replace("€", "").replace("\xa0", "").strip()
+    raw = re.sub(r"[^\d,.]", "", raw).replace(",", ".")
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def scrape_amazon_search(session: requests.Session, query: str) -> list[dict]:
+    """
+    Cerca su Amazon IT e ritorna i primi risultati come lista di dict:
+    {asin, title, price, available, image, affiliate_url}
+    """
+    url = f"{AMAZON_BASE}/s?k={quote(query)}&i=industrial"
+    try:
+        r = session.get(url, timeout=15)
+        r.raise_for_status()
+    except Exception as e:
+        log.warning(f"  Amazon search error ({query!r}): {e}")
+        return []
+
+    if r.status_code == 503 or "To discuss automated access" in r.text:
+        log.warning(f"  Amazon blocked (503): {query!r}")
+        return []
+
+    soup = BeautifulSoup(r.text, "lxml")
+    results = []
+
+    for card in soup.find_all("div", {"data-component-type": "s-search-result"}):
+        asin = card.get("data-asin", "").strip()
+        if not asin or len(asin) != 10:
+            continue
+
+        # Titolo
+        title_el = card.find("h2")
+        title = title_el.get_text(strip=True) if title_el else ""
+        if not title:
+            continue
+
+        # Prezzo dal contenitore a-price
+        price_container = card.find("span", class_="a-price")
+        price = _parse_amazon_price(price_container)
+
+        # Prezzo barrato (prezzo originale)
+        compare_container = card.find("span", {"class": re.compile(r"a-price.*a-text-price")})
+        compare_price = _parse_amazon_price(compare_container) if compare_container != price_container else None
+
+        # Disponibilità
+        avail_el = card.find("span", class_="a-size-base-plus")
+        available = True
+        if avail_el and any(kw in avail_el.get_text() for kw in ["Non disponibile", "Esaurito", "Temporaneamente"]):
+            available = False
+
+        # Immagine
+        img_el = card.find("img", class_="s-image")
+        image = img_el.get("src", "") if img_el else ""
+
+        affiliate_url = f"{AMAZON_BASE}/dp/{asin}?tag={AMAZON_TAG}"
+
+        results.append({
+            "asin": asin,
+            "title": title,
+            "price": price,
+            "compare_price": compare_price,
+            "available": available,
+            "image": image,
+            "affiliate_url": affiliate_url,
+        })
+
+    return results
+
+
+def scrape_amazon(db: DB):
+    log.info("=== AMAZON IT ===")
+    shop_id = db.get_shop_id("Amazon IT")
+    if not shop_id:
+        log.error("Shop 'Amazon IT' non trovato nel DB — aggiungilo prima nell'admin")
+        return
+
+    log.info(f"Shop ID: {shop_id}")
+
+    all_brands = db.get_all_brands()
+    all_brands_sorted = sorted(all_brands, key=lambda b: len(b["nome"]), reverse=True)
+
+    session = _amazon_session()
+    _processed_pairs: set[tuple[int, int]] = set()
+    total = 0
+    skipped = 0
+
+    for query, brand_hint in AMAZON_QUERIES:
+        log.info(f"  Ricerca: {query!r}")
+        results = scrape_amazon_search(session, query)
+        log.debug(f"    Trovati {len(results)} risultati")
+
+        for item in results:
+            title = item["title"]
+            price = item["price"]
+
+            # Salta se non ha prezzo
+            if not price or price <= 0:
+                skipped += 1
+                continue
+
+            # Validazione: il titolo deve contenere un materiale filamento
+            title_lower = title.lower()
+            if not any(kw in title_lower for kw in DJAKE_NAME_MUST_CONTAIN):
+                log.debug(f"    Skip non-filamento: {title[:60]}")
+                skipped += 1
+                continue
+
+            # Trova brand nel DB
+            brand_id = None
+            if brand_hint:
+                brand_id = db.get_brand_id(brand_hint)
+            if not brand_id:
+                for b in all_brands_sorted:
+                    if b["nome"].lower() in title_lower:
+                        brand_id = b["id"]
+                        break
+
+            if not brand_id:
+                log.debug(f"    Skip brand non trovato: {title[:60]}")
+                skipped += 1
+                continue
+
+            # Rileva tipo, variante, colore, peso dal titolo
+            type_nome = detect_type(title)
+            if not type_nome:
+                log.debug(f"    Skip tipo non rilevato: {title[:60]}")
+                skipped += 1
+                continue
+
+            variant_nome = detect_variant(type_nome, title)
+            type_id = db.get_or_create_type(type_nome)
+            if type_id < 0:
+                continue
+            variant_id = db.get_or_create_variant(type_id, variant_nome)
+            if variant_id < 0:
+                continue
+
+            colore, colore_hex, colore_famiglia = detect_color(title)
+            peso_g = detect_weight(title) or 1000
+            is_refill = any(kw in title_lower for kw in ["refill", "no spool", "cardboard spool"])
+
+            fil_id = db.get_or_create_filament(
+                variant_id, brand_id, colore, colore_hex, colore_famiglia,
+                peso_g, 1.75, item["image"] or None, None,
+                is_refill=is_refill,
+            )
+            if fil_id < 0:
+                continue
+
+            pair = (fil_id, shop_id)
+            if pair in _processed_pairs:
+                log.debug(f"    Skip duplicato (fil_id={fil_id})")
+                continue
+            _processed_pairs.add(pair)
+
+            fs_id = db.get_or_create_filament_shop(fil_id, shop_id, item["affiliate_url"], affiliazione=True)
+            if fs_id < 0:
+                continue
+
+            # Prezzi: se c'è compare_price, è il prezzo originale barrato
+            prezzo = item["price"]
+            prezzo_scontato = None
+            if item.get("compare_price") and item["compare_price"] > prezzo:
+                prezzo_scontato = prezzo
+                prezzo = item["compare_price"]
+
+            db.insert_price(fs_id, prezzo, prezzo_scontato, item["available"])
+            total += 1
+            log.debug(f"    OK: {title[:70]} — €{item['price']}")
+
+        # Pausa tra query per evitare rate limiting
+        time.sleep(random.uniform(3, 6))
+        # Ogni 5 query, rinnova la sessione con nuovo user-agent
+        if (AMAZON_QUERIES.index((query, brand_hint)) + 1) % 5 == 0:
+            session = _amazon_session()
+            time.sleep(random.uniform(5, 10))
+
+    log.info(f"Amazon IT: {total} varianti processate, {skipped} saltate")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Filament Finder Scraper")
-    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "3djake", "all"], default="all")
+    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "3djake", "amazon", "all"], default="all")
     parser.add_argument("--dry-run", action="store_true", help="Non scrive nel DB")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -1547,6 +1809,9 @@ def main():
 
     if args.shop in ("3djake", "all"):
         scrape_3djake(db)
+
+    if args.shop in ("amazon", "all"):
+        scrape_amazon(db)
 
     elapsed = (datetime.now() - start).total_seconds()
     log.info(f"=== Completato in {elapsed:.1f}s ===")
