@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Field, inp, sel } from "./Field";
+import SearchableSelect from "./SearchableSelect";
 
 interface FilLink {
   id: number; id_shop: number; shop_nome: string; link: string;
@@ -75,14 +76,15 @@ export default function PrezziTab({ secret }: Props) {
       {/* Selezione filamento */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
         <Field label="Seleziona filamento" tooltip="Scegli il filamento per cui vuoi inserire il prezzo. Verranno mostrati i link shop disponibili.">
-          <select value={selFilId} onChange={e => loadLinks(e.target.value)} className={sel}>
-            <option value="">— scegli un filamento —</option>
-            {filamenti.map(f => (
-              <option key={f.id} value={f.id}>
-                {f.brand_nome} · {f.tipo_nome} {f.variante_nome} {f.colore ?? ""} {f.peso_g}g
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={filamenti.map(f => ({
+              value: String(f.id),
+              label: `${f.brand_nome} · ${f.tipo_nome} ${f.variante_nome}${f.colore ? ` ${f.colore}` : ""} ${f.peso_g}g`,
+            }))}
+            value={selFilId}
+            onChange={loadLinks}
+            placeholder="— cerca filamento —"
+          />
         </Field>
       </div>
 

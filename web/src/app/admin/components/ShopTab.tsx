@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import { Field, inp, sel } from "./Field";
+import SearchableSelect from "./SearchableSelect";
 
 interface Shop { id: number; nome: string; url: string | null; paese: string | null; tipo: string | null; attivo: boolean }
 interface ShopLink { id: number; id_filament: number; id_shop: number; brand_nome: string; tipo_nome: string; variante_nome: string; colore: string | null; peso_g: number; shop_nome: string; link: string; affiliazione: boolean; attivo: boolean }
@@ -48,18 +49,21 @@ function LinkFields({ form, setForm, filamenti, shops }: {
   form: LinkForm; setForm: React.Dispatch<React.SetStateAction<LinkForm>>;
   filamenti: Filamento[]; shops: Shop[];
 }) {
+  const filOptions = filamenti.map(f => ({
+    value: String(f.id),
+    label: `${f.brand_nome} · ${f.tipo_nome} ${f.variante_nome}${f.colore ? ` ${f.colore}` : ""} ${f.peso_g}g`,
+  }));
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Filamento" tooltip="Il filamento specifico per cui stai aggiungendo questo link acquisto" required>
-          <select value={form.id_filament} onChange={e => setForm(f => ({ ...f, id_filament: e.target.value }))} className={sel}>
-            <option value="">Seleziona filamento...</option>
-            {filamenti.map(f => (
-              <option key={f.id} value={f.id}>
-                {f.brand_nome} · {f.tipo_nome} {f.variante_nome} {f.colore ?? ""} {f.peso_g}g
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={filOptions}
+            value={form.id_filament}
+            onChange={v => setForm(f => ({ ...f, id_filament: v }))}
+            placeholder="Cerca filamento..."
+          />
         </Field>
         <Field label="Negozio" tooltip="Il negozio da cui è acquistabile il filamento" required>
           <select value={form.id_shop} onChange={e => setForm(f => ({ ...f, id_shop: e.target.value }))} className={sel}>
