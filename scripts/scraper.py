@@ -717,11 +717,13 @@ def scrape_elegoo(db: DB):
     # Salta varianti RFID (stesso filamento ma con chip NFC/RFID — prezzo più alto, stesso articolo)
     ELEGOO_SKIP = ["rfid", " rfid ", "(rfid)", "with rfid"]
 
+    _shared_pairs: set[tuple[int, int]] = set()  # deduplicazione cross-prodotto
     total = 0
     for p in filament_products:
         n = process_shopify_product(p, brand_id, shop_id, db, ELEGOO_EU,
                                     default_weight_g=1000,
-                                    skip_variant_keywords=ELEGOO_SKIP)
+                                    skip_variant_keywords=ELEGOO_SKIP,
+                                    processed_pairs=_shared_pairs)
         total += n
 
     log.info(f"Elegoo EU: {total} varianti processate")
@@ -775,6 +777,7 @@ def scrape_sunlu(db: DB):
     filament_products = [p for p in products if is_valid_sunlu(p)]
     log.info(f"Filtrati {len(filament_products)} filamenti da processare")
 
+    _shared_pairs: set[tuple[int, int]] = set()  # deduplicazione cross-prodotto
     total = 0
     for p in filament_products:
         peso_nel_titolo = detect_weight(p.get("title", ""))
@@ -783,6 +786,7 @@ def scrape_sunlu(db: DB):
             default_weight_g=peso_nel_titolo if peso_nel_titolo else 1000,
             url_extra_params=SUNLU_REF,
             affiliazione=True,
+            processed_pairs=_shared_pairs,
         )
         total += n
 
