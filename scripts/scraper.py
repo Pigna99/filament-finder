@@ -1517,6 +1517,192 @@ def scrape_3djake(db: DB):
     log.info(f"3DJake IT: {total} prodotti processati, {skipped} saltati")
 
 
+# ── Scraper Elegoo via Impact API ─────────────────────────────────────────────
+
+IMPACT_ACCOUNT_SID = "IRHNDhhP2yTL7008452LFap3vURNTnMpd1"
+IMPACT_AUTH_TOKEN  = "yazHtGm~DFpEuTXjr9hEjm3egsh_qGMB"
+IMPACT_CATALOG_IT  = "21456"   # Elegoo Product Datafeed for Italy — EUR
+IMPACT_API_BASE    = "https://api.impact.com"
+
+
+def _parse_elegoo_impact_name(name: str) -> tuple[str | None, str, str, int]:
+    """
+    Parsa il Nome dal catalog Impact per estrarre (tipo, variante, colore, peso_g).
+    Esempi:
+      "PLA Pro - True Red"                     → ("PLA", "Pro", "True Red", 1000)
+      "PETG-CF - Carbon Fiber Red"             → ("PETG-CF", "Standard", "Carbon Fiber Red", 1000)
+      "Rapid PETG - Blue"                      → ("PETG", "Rapid", "Blue", 1000)
+      "TPU 95A - Translucent"                  → ("TPU", "95A", "Translucent", 1000)
+      "PLA - PLA / Space Grey"                 → ("PLA", "Basic", "Space Grey", 1000)
+      "Bobina Rapid PLA Plus da 5kg - PLA+ / Blue" → ("PLA", "Plus", "Blue", 5000)
+    """
+    # Rimuovi prefisso "Bobina ... da Nkg - "
+    name = re.sub(r'^Bobina\s.*?da\s+\d+\s*kg\s*-\s*', '', name, flags=re.I)
+    # Rimuovi "Bobina di filamento da N kg - "
+    name = re.sub(r'^Bobina di filamento da\s+\d+[\s,]*kg\s*-\s*', '', name, flags=re.I)
+
+    # Estrai peso dal nome originale
+    peso_g = detect_weight(name) or 1000
+
+    # Dividi su " - ": sinistro = tipo+variante, destro = colore
+    if " - " in name:
+        left, right = name.split(" - ", 1)
+    else:
+        return None, "Standard", name.strip(), peso_g
+
+    # Colore: rimuovi eventuale prefisso tipo ripetuto (es. "PLA / Space Grey" → "Space Grey")
+    color_raw = right.strip()
+    color_raw = re.sub(r'^[A-Z][A-Z0-9\+\-]+\s*/\s*', '', color_raw)  # rimuovi "PLA+ / "
+    color_raw = color_raw.strip()
+
+    # Tipo e variante dal campo sinistro
+    left = left.strip()
+    # Rimuovi peso dal campo sinistro se presente ("Rapid PLA Plus da 5kg" → "Rapid PLA Plus")
+    left = re.sub(r'\s+da\s+\d+[\s,]*kg', '', left, flags=re.I).strip()
+
+    # Mapping nome → (tipo, variante)
+    ELEGOO_TYPE_MAP = {
+        r'^PLA\+?$':            ("PLA", "Basic"),
+        r'^PLA Pro':            ("PLA", "Pro"),
+        r'^PLA Plus|^PLA\+':   ("PLA", "Plus"),
+        r'^PLA Matte':         ("PLA", "Matte"),
+        r'^PLA Silk':          ("PLA", "Silk"),
+        r'^PLA Galaxy':        ("PLA", "Galaxy"),
+        r'^PLA HS|^HS PLA':    ("PLA", "HS"),
+        r'^Rapid PLA':         ("PLA", "Rapid"),
+        r'^PLA Sparkle':       ("PLA", "Sparkle"),
+        r'^PLA\b':             ("PLA", "Basic"),
+        r'^PETG-CF':           ("PETG-CF", "Standard"),
+        r'^Rapid PETG':        ("PETG", "Rapid"),
+        r'^PETG Pro':          ("PETG", "Pro"),
+        r'^PETG Plus|^PETG\+': ("PETG", "Plus"),
+        r'^PETG\b':            ("PETG", "Basic"),
+        r'^ABS\b':             ("ABS", "Standard"),
+        r'^ABS\+':             ("ABS", "Plus"),
+        r'^ASA\b':             ("ASA", "Standard"),
+        r'^TPU 95A':           ("TPU", "95A"),
+        r'^TPU\b':             ("TPU", "Standard"),
+        r'^PA12-CF':           ("PA-CF", "Standard"),
+        r'^PA-CF':             ("PA-CF", "Standard"),
+        r'^PA\b':              ("PA", "Standard"),
+        r'^PLA-CF':            ("PLA-CF", "Standard"),
+        r'^PC\b':              ("PC", "Standard"),
+        r'^PETG-ESD':          ("PETG", "ESD"),
+    }
+    type_nome, variant_nome = None, "Standard"
+    for pattern, (t, v) in ELEGOO_TYPE_MAP.items():
+        if re.match(pattern, left, re.I):
+            type_nome = t
+            variant_nome = v
+            break
+
+    return type_nome, variant_nome, color_raw, peso_g
+
+
+def scrape_elegoo_impact(db: DB):
+    log.info("=== ELEGOO IT (Impact API) ===")
+    brand_id = db.get_brand_id("Elegoo")
+    shop_id = db.get_shop_id("Elegoo IT")
+    if not brand_id or not shop_id:
+        log.error("Brand 'Elegoo' o shop 'Elegoo IT (Impact)' non trovato nel DB")
+        return
+    log.info(f"Brand ID: {brand_id}, Shop ID: {shop_id}")
+
+    session = requests.Session()
+    session.auth = (IMPACT_ACCOUNT_SID, IMPACT_AUTH_TOKEN)
+    session.headers["Accept"] = "application/json"
+
+    # Recupera tutte le pagine del catalog IT
+    all_items: list[dict] = []
+    url = f"{IMPACT_API_BASE}/Mediapartners/{IMPACT_ACCOUNT_SID}/Catalogs/{IMPACT_CATALOG_IT}/Items?PageSize=250"
+    while url:
+        try:
+            r = session.get(url, timeout=20)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            log.error(f"Errore Impact API: {e}")
+            break
+        all_items.extend(data.get("Items", []))
+        next_page = data.get("@nextpageuri", "")
+        url = f"{IMPACT_API_BASE}{next_page}" if next_page else None
+
+    filaments = [i for i in all_items if i.get("Category") == "Filamenti"]
+    log.info(f"Trovati {len(filaments)} filamenti nel catalog IT")
+
+    _processed_pairs: set[tuple[int, int]] = set()
+    total = 0
+    skipped = 0
+
+    for item in filaments:
+        name = item.get("Name", "").strip()
+        prezzo_str = item.get("CurrentPrice", "")
+        orig_str = item.get("OriginalPrice", "")
+        available = item.get("StockAvailability", "") == "InStock"
+        affiliate_url = item.get("Url", "")
+        image_url = item.get("ImageUrl", "") or None
+
+        if not prezzo_str or not affiliate_url:
+            skipped += 1
+            continue
+
+        try:
+            prezzo = float(prezzo_str)
+        except ValueError:
+            skipped += 1
+            continue
+
+        prezzo_scontato = None
+        if orig_str:
+            try:
+                orig = float(orig_str)
+                if orig > prezzo:
+                    prezzo_scontato = prezzo
+                    prezzo = orig
+            except ValueError:
+                pass
+
+        type_nome, variant_nome, color_raw, peso_g = _parse_elegoo_impact_name(name)
+        if not type_nome:
+            log.debug(f"  Skip tipo non rilevato: {name!r}")
+            skipped += 1
+            continue
+
+        is_refill = "refill" in name.lower() or "no spool" in name.lower()
+        colore, colore_hex, colore_famiglia = detect_color(color_raw)
+
+        type_id = db.get_or_create_type(type_nome)
+        if type_id < 0:
+            continue
+        variant_id = db.get_or_create_variant(type_id, variant_nome)
+        if variant_id < 0:
+            continue
+
+        fil_id = db.get_or_create_filament(
+            variant_id, brand_id,
+            colore or color_raw, colore_hex, colore_famiglia,
+            peso_g, 1.75, image_url, None,
+            is_refill=is_refill,
+        )
+        if fil_id < 0:
+            continue
+
+        pair = (fil_id, shop_id)
+        if pair in _processed_pairs:
+            continue
+        _processed_pairs.add(pair)
+
+        fs_id = db.get_or_create_filament_shop(fil_id, shop_id, affiliate_url, affiliazione=True)
+        if fs_id < 0:
+            continue
+
+        db.insert_price(fs_id, prezzo, prezzo_scontato, available)
+        total += 1
+        log.debug(f"  OK: {name!r} → {type_nome} {variant_nome} {colore or color_raw} {peso_g}g €{prezzo}")
+
+    log.info(f"Elegoo Impact IT: {total} varianti processate, {skipped} saltate")
+
+
 # ── Scraper Prusament ─────────────────────────────────────────────────────────
 
 PRUSAMENT_BASE = "https://prusament.com"
@@ -1958,7 +2144,7 @@ def scrape_amazon(db: DB):
 
 def main():
     parser = argparse.ArgumentParser(description="Filament Finder Scraper")
-    parser.add_argument("--shop", choices=["elegoo", "sunlu", "bambu", "esun", "3djake", "amazon", "prusament", "all"], default="all")
+    parser.add_argument("--shop", choices=["elegoo", "elegoo-impact", "sunlu", "bambu", "esun", "3djake", "amazon", "prusament", "all"], default="all")
     parser.add_argument("--dry-run", action="store_true", help="Non scrive nel DB")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -1980,6 +2166,9 @@ def main():
 
     if args.shop in ("elegoo", "all"):
         scrape_elegoo(db)
+
+    if args.shop in ("elegoo-impact", "all"):
+        scrape_elegoo_impact(db)
 
     if args.shop in ("sunlu", "all"):
         scrape_sunlu(db)
