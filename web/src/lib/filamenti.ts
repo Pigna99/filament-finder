@@ -58,6 +58,25 @@ export interface PrezzoShop {
   prezzo_per_kg: number | null;
   disponibile: boolean;
   rilevato_at: Date;
+  // Regola spedizione del negozio (null se non configurata)
+  shipping_costo: number | null;
+  shipping_soglia_gratis: number | null;
+  shipping_corriere: string | null;
+  shipping_giorni_min: number | null;
+  shipping_giorni_max: number | null;
+  shipping_note: string | null;
+}
+
+export interface ShopShippingRule {
+  id: number;
+  id_shop: number;
+  shop_nome: string;
+  costo: number;
+  soglia_gratis: number | null;
+  corriere: string | null;
+  giorni_min: number | null;
+  giorni_max: number | null;
+  note: string | null;
 }
 
 export interface PuntoStorico {
@@ -79,15 +98,19 @@ export interface CatalogoFilters {
   brand?: string;
   diametro?: number;
   colore_famiglia?: string;
-  prezzo_max?: number;
+  prezzo_max?: number;     // max €/kg
+  prezzo_abs_max?: number; // max prezzo assoluto (€)
+  peso?: number;
   q?: string;
-  refill?: "yes" | "no"; // "yes" = solo refill, "no" = solo con bobina
+  refill?: "yes" | "no";  // "yes" = solo refill, "no" = solo con bobina
+  disponibile?: boolean;  // true = solo con almeno uno shop disponibile
 }
 
 // ----------------------------------------------------------------
 // getCatalogo — lista filamenti con filtri dinamici
 // ----------------------------------------------------------------
 export async function getCatalogo(filters: CatalogoFilters = {}): Promise<FilamentoRow[]> {
+  const qLike = filters.q ? "%" + filters.q + "%" : null;
   const rows = await sql<FilamentoRow[]>`
     SELECT *
     FROM v_filament_full
@@ -96,8 +119,17 @@ export async function getCatalogo(filters: CatalogoFilters = {}): Promise<Filame
       ${filters.brand ? sql`AND brand = ${filters.brand}` : sql``}
       ${filters.diametro ? sql`AND diametro_mm = ${filters.diametro}` : sql``}
       ${filters.colore_famiglia ? sql`AND colore_famiglia = ${filters.colore_famiglia}` : sql``}
+      ${filters.peso ? sql`AND peso_g = ${filters.peso}` : sql``}
       ${filters.prezzo_max ? sql`AND (prezzo_per_kg_min IS NULL OR prezzo_per_kg_min <= ${filters.prezzo_max})` : sql``}
-      ${filters.q ? sql`AND (colore ILIKE ${"%" + filters.q + "%"} OR brand ILIKE ${"%" + filters.q + "%"})` : sql``}
+      ${filters.prezzo_abs_max ? sql`AND prezzo_min IS NOT NULL AND prezzo_min <= ${filters.prezzo_abs_max}` : sql``}
+      ${filters.disponibile ? sql`AND num_shop > 0` : sql``}
+      ${qLike ? sql`AND (
+        colore ILIKE ${qLike}
+        OR brand ILIKE ${qLike}
+        OR tipo ILIKE ${qLike}
+        OR variante ILIKE ${qLike}
+        OR colore_famiglia ILIKE ${qLike}
+      )` : sql``}
       ${filters.refill === "yes" ? sql`AND is_refill = TRUE` : filters.refill === "no" ? sql`AND is_refill = FALSE` : sql``}
     ORDER BY prezzo_per_kg_min ASC NULLS LAST
   `;
@@ -108,16 +140,27 @@ export async function getCatalogo(filters: CatalogoFilters = {}): Promise<Filame
 // getFilamentoBySlug — filamento singolo da slug
 // Cerca prima per slug generato (in-memory), poi per ID come fallback
 // ----------------------------------------------------------------
+// Tipos noti ordinati dal più specifico al più generico (per matching slug)
+const SLUG_TIPOS = [
+  "petg-cf","pla-cf","pa-cf","pet-cf","paht-cf","petg","pla","abs","asa",
+  "tpu","nylon","pa","pc","hips","pva",
+];
+
 export async function getFilamentoBySlug(slug: string): Promise<FilamentoRow | null> {
-  // Extract peso_g from slug suffix (e.g. "bambu-pla-matte-black-1000g" → 1000)
-  // to narrow the query significantly instead of loading all rows
-  // Handle both standard slugs (...-1000g) and refill slugs (...-1000g-refill)
+  // Estrae peso_g dal suffisso (es. "bambu-pla-matte-black-1000g" → 1000)
   const pesoMatch = slug.match(/-(\d+)g(?:-refill)?$/);
   const pesoG = pesoMatch ? parseInt(pesoMatch[1]) : null;
 
-  const rows = pesoG
-    ? await sql<FilamentoRow[]>`SELECT * FROM v_filament_full WHERE peso_g = ${pesoG}`
-    : await sql<FilamentoRow[]>`SELECT * FROM v_filament_full`;
+  // Estrae tipo dal slug controllando i pattern noti (dal più specifico)
+  const tipoSlug = SLUG_TIPOS.find((t) => slug.includes(`-${t}-`) || slug.endsWith(`-${t}`));
+  const tipoFilter = tipoSlug ? tipoSlug.toUpperCase() : null;
+
+  const rows = await sql<FilamentoRow[]>`
+    SELECT * FROM v_filament_full
+    WHERE TRUE
+      ${pesoG ? sql`AND peso_g = ${pesoG}` : sql``}
+      ${tipoFilter ? sql`AND tipo = ${tipoFilter}` : sql``}
+  `;
 
   return (
     rows.find(
@@ -135,9 +178,16 @@ export async function getPrezziShop(id_filament: number): Promise<PrezzoShop[]> 
     SELECT
       vpl.*,
       s.nome  AS shop,
-      s.paese
+      s.paese,
+      ss.costo            AS shipping_costo,
+      ss.soglia_gratis    AS shipping_soglia_gratis,
+      ss.corriere         AS shipping_corriere,
+      ss.giorni_min       AS shipping_giorni_min,
+      ss.giorni_max       AS shipping_giorni_max,
+      ss.note             AS shipping_note
     FROM v_price_latest vpl
     JOIN shop s ON s.id = vpl.id_shop
+    LEFT JOIN shop_shipping ss ON ss.id_shop = s.id
     WHERE vpl.id_filament = ${id_filament}
     ORDER BY vpl.disponibile DESC, vpl.prezzo_finale ASC
   `;
@@ -171,6 +221,58 @@ export async function getTopFilamenti(limit = 6): Promise<FilamentoRow[]> {
     ORDER BY prezzo_per_kg_min ASC
     LIMIT ${limit}
   `;
+}
+
+// ----------------------------------------------------------------
+// FilamentoScontato — filamento con sconto attivo
+// ----------------------------------------------------------------
+export interface FilamentoScontato extends FilamentoRow {
+  sconto_percentuale: number;
+  prezzo_originale_sconto: number;
+  shop_sconto: string;
+}
+
+// getFilamentiScontati — filamenti con sconto attivo, ordinati per sconto %
+// ----------------------------------------------------------------
+export async function getFilamentiScontati(limit = 6): Promise<FilamentoScontato[]> {
+  return sql<FilamentoScontato[]>`
+    SELECT DISTINCT ON (f.id)
+      f.*,
+      ph.sconto_percentuale,
+      ph.prezzo        AS prezzo_originale_sconto,
+      ph.prezzo_scontato,
+      s.nome           AS shop_sconto
+    FROM v_filament_full f
+    JOIN filament_shop fs ON fs.id_filament = f.id
+    JOIN shop s ON s.id = fs.id_shop
+    JOIN LATERAL (
+      SELECT *
+      FROM price_history p
+      WHERE p.id_filament_shop = fs.id
+        AND p.sconto_percentuale IS NOT NULL
+        AND p.disponibile = TRUE
+      ORDER BY p.rilevato_at DESC
+      LIMIT 1
+    ) ph ON TRUE
+    WHERE ph.sconto_percentuale > 5
+    ORDER BY f.id, ph.sconto_percentuale DESC
+    LIMIT ${limit}
+  `;
+}
+
+// ----------------------------------------------------------------
+// getSiteStats — statistiche homepage (filamenti, shop)
+// ----------------------------------------------------------------
+export async function getSiteStats(): Promise<{ num_filamenti: number; num_shop: number }> {
+  const rows = await sql<{ num_filamenti: string; num_shop: string }[]>`
+    SELECT
+      (SELECT COUNT(*) FROM filament WHERE attivo = TRUE)::text AS num_filamenti,
+      (SELECT COUNT(*) FROM shop    WHERE attivo = TRUE)::text AS num_shop
+  `;
+  return {
+    num_filamenti: parseInt(rows[0]?.num_filamenti ?? "0"),
+    num_shop: parseInt(rows[0]?.num_shop ?? "0"),
+  };
 }
 
 // ----------------------------------------------------------------
@@ -243,4 +345,43 @@ export async function getColoriFamiglie(): Promise<string[]> {
     ORDER BY colore_famiglia
   `;
   return rows.map((r) => r.colore_famiglia);
+}
+
+// ----------------------------------------------------------------
+// getCompatibiliPrinters — stampanti compatibili con una variante
+// ----------------------------------------------------------------
+export interface PrinterCompat {
+  id: number;
+  nome: string;
+  brand: string | null;
+  diametro_mm: number;
+  ha_enclosure: boolean;
+  max_temp_hotend: number | null;
+  compatibile: boolean;
+  note: string | null;
+}
+
+export async function getCompatibiliPrinters(id_variant: number): Promise<PrinterCompat[]> {
+  return sql<PrinterCompat[]>`
+    SELECT
+      pp.id, pp.nome, pp.brand, pp.diametro_mm, pp.ha_enclosure, pp.max_temp_hotend,
+      fvp.compatibile, fvp.note
+    FROM filament_variant_printer fvp
+    JOIN printer_profile pp ON pp.id = fvp.id_printer
+    WHERE fvp.id_variant = ${id_variant}
+      AND pp.attivo = TRUE
+    ORDER BY fvp.compatibile DESC, pp.brand, pp.nome
+  `;
+}
+
+// ----------------------------------------------------------------
+// getFilamentiByIds — batch fetch per pagina confronto
+// ----------------------------------------------------------------
+export async function getFilamentiByIds(ids: number[]): Promise<FilamentoRow[]> {
+  if (ids.length === 0) return [];
+  return sql<FilamentoRow[]>`
+    SELECT * FROM v_filament_full
+    WHERE id = ANY(${ids}::int[])
+    ORDER BY array_position(${ids}::int[], id)
+  `;
 }
