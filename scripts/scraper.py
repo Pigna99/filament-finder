@@ -1596,9 +1596,11 @@ def _parse_elegoo_impact_name(name: str) -> tuple[str | None, str, str, int, boo
         (r'^Rapid TPU 95A',           "TPU",     "Rapid 95A"),
         (r'^TPU 95A',                 "TPU",     "95A"),
         (r'^TPU\b',                   "TPU",     "Standard"),
-        (r'^PA12-CF|^PA-CF',          "PA-CF",   "Standard"),
+        (r'^PA12-CF|^PA-CF|^PAHT-CF', "PA-CF",   "Standard"),
         (r'^PA\b',                    "PA",      "Standard"),
         (r'^PC\b',                    "PC",      "Standard"),
+        (r'^PET-CF',                  "PET-CF",  "Standard"),
+        (r'^Bagliore PLA',            "PLA",     "Glow"),
     ]
     for pattern, t, v in ELEGOO_TYPE_MAP:
         if re.match(pattern, left, re.I):
