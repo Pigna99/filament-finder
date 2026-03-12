@@ -26,7 +26,7 @@ export default function ConfróntoButton({ id }: Props) {
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCompare(id); }}
       disabled={full}
       title={active ? "Rimuovi dal confronto" : full ? "Massimo 4 filamenti" : "Aggiungi al confronto"}
-      className={`absolute bottom-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs border transition-all ${
+      className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs border transition-all ${
         active
           ? "bg-emerald-600 border-emerald-500 text-white"
           : full

@@ -70,7 +70,7 @@ export default function FilamentoCard({ f }: Props) {
         </span>
         {/* Badge refill */}
         {f.is_refill && (
-          <span className="absolute top-2 right-2 text-xs bg-amber-900/80 text-amber-300 border border-amber-700/50 px-1.5 py-0.5 rounded-full">
+          <span className="absolute top-9 right-2 text-xs bg-amber-900/80 text-amber-300 border border-amber-700/50 px-1.5 py-0.5 rounded-full">
             Refill
           </span>
         )}
