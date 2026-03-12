@@ -8,12 +8,15 @@ import SearchableSelect from "./SearchableSelect";
 interface Shop { id: number; nome: string; url: string | null; paese: string | null; tipo: string | null; attivo: boolean }
 interface ShopLink { id: number; id_filament: number; id_shop: number; brand_nome: string; tipo_nome: string; variante_nome: string; colore: string | null; peso_g: number; shop_nome: string; link: string; affiliazione: boolean; attivo: boolean }
 interface Filamento { id: number; brand_nome: string; tipo_nome: string; variante_nome: string; colore: string | null; peso_g: number }
+interface ShippingRule { id: number; id_shop: number; shop_nome: string; costo: number; soglia_gratis: number | null; corriere: string | null; giorni_min: number | null; giorni_max: number | null; note: string | null }
 interface Props { secret: string }
 
 const emptyShopForm = { nome: "", url: "", paese: "", tipo: "reseller", codice_sconto: "" };
 const emptyLinkForm = { id_filament: "", id_shop: "", link: "", affiliazione: false, codice_sconto: "" };
+const emptyShippingForm = { id_shop: "", costo: "0", soglia_gratis: "", corriere: "", giorni_min: "", giorni_max: "", note: "" };
 type ShopForm = typeof emptyShopForm;
 type LinkForm = typeof emptyLinkForm;
+type ShippingForm = typeof emptyShippingForm;
 
 function ShopFields({ form, setForm }: { form: ShopForm; setForm: React.Dispatch<React.SetStateAction<ShopForm>> }) {
   return (
@@ -92,31 +95,79 @@ function LinkFields({ form, setForm, filamenti, shops }: {
   );
 }
 
+function ShippingFields({ form, setForm, shops }: {
+  form: ShippingForm; setForm: React.Dispatch<React.SetStateAction<ShippingForm>>;
+  shops: Shop[];
+}) {
+  return (
+    <div className="space-y-4">
+      <Field label="Negozio" required tooltip="Il negozio a cui si applica questa regola di spedizione">
+        <select value={form.id_shop} onChange={e => setForm(f => ({ ...f, id_shop: e.target.value }))} className={sel}>
+          <option value="">Seleziona negozio...</option>
+          {shops.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+        </select>
+      </Field>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Costo spedizione €" tooltip="Costo fisso di spedizione in euro. Inserisci 0 se gratuita.">
+          <input type="number" step="0.01" min="0" value={form.costo}
+            onChange={e => setForm(f => ({ ...f, costo: e.target.value }))} className={inp} placeholder="0.00" />
+        </Field>
+        <Field label="Soglia spedizione gratuita €" tooltip="Importo minimo del carrello per la spedizione gratuita. Lascia vuoto se non esiste una soglia.">
+          <input type="number" step="0.01" min="0" value={form.soglia_gratis}
+            onChange={e => setForm(f => ({ ...f, soglia_gratis: e.target.value }))} className={inp} placeholder="es. 49.90" />
+        </Field>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Field label="Corriere" tooltip="Nome del corriere usato (es. DHL, GLS, Amazon FBA)">
+          <input value={form.corriere} onChange={e => setForm(f => ({ ...f, corriere: e.target.value }))} className={inp} placeholder="es. DHL" />
+        </Field>
+        <Field label="Giorni min" tooltip="Tempo minimo di consegna stimato in giorni lavorativi">
+          <input type="number" min="1" value={form.giorni_min}
+            onChange={e => setForm(f => ({ ...f, giorni_min: e.target.value }))} className={inp} placeholder="es. 3" />
+        </Field>
+        <Field label="Giorni max" tooltip="Tempo massimo di consegna stimato in giorni lavorativi">
+          <input type="number" min="1" value={form.giorni_max}
+            onChange={e => setForm(f => ({ ...f, giorni_max: e.target.value }))} className={inp} placeholder="es. 7" />
+        </Field>
+      </div>
+      <Field label="Note" tooltip="Informazioni aggiuntive (es. paesi coperti, condizioni speciali)">
+        <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inp}
+          placeholder="es. Spedizione da magazzino DE tramite Amazon FBA" />
+      </Field>
+    </div>
+  );
+}
+
 export default function ShopTab({ secret }: Props) {
   const [shops, setShops] = useState<Shop[]>([]);
   const [links, setLinks] = useState<ShopLink[]>([]);
   const [filamenti, setFilamenti] = useState<Filamento[]>([]);
+  const [shippingRules, setShippingRules] = useState<ShippingRule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"shop" | "links">("shop");
+  const [tab, setTab] = useState<"shop" | "links" | "shipping">("shop");
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Form nuovi
   const [newShopForm, setNewShopForm] = useState<ShopForm>(emptyShopForm);
   const [newLinkForm, setNewLinkForm] = useState<LinkForm>(emptyLinkForm);
+  const [newShippingForm, setNewShippingForm] = useState<ShippingForm>(emptyShippingForm);
 
   // Modali edit
   const [editShop, setEditShop] = useState<Shop | null>(null);
   const [editShopForm, setEditShopForm] = useState<ShopForm>(emptyShopForm);
+  const [editShipping, setEditShipping] = useState<ShippingRule | null>(null);
+  const [editShippingForm, setEditShippingForm] = useState<ShippingForm>(emptyShippingForm);
 
   async function load() {
     setLoading(true);
-    const [sr, lr, fr] = await Promise.all([
+    const [sr, lr, fr, shr] = await Promise.all([
       fetch(`/api/admin/shop?secret=${secret}`).then(r => r.json()),
       fetch(`/api/admin/shop?secret=${secret}&mode=links`).then(r => r.json()),
       fetch(`/api/admin/filamenti?secret=${secret}`).then(r => r.json()),
+      fetch(`/api/admin/shipping?secret=${secret}`).then(r => r.json()),
     ]);
-    setShops(sr); setLinks(lr); setFilamenti(fr);
+    setShops(sr); setLinks(lr); setFilamenti(fr); setShippingRules(shr);
     setLoading(false);
   }
 
@@ -196,6 +247,48 @@ export default function ShopTab({ secret }: Props) {
     setEditShop(s);
   }
 
+  async function saveShipping(form: ShippingForm) {
+    if (!form.id_shop) return;
+    setSaving(true);
+    await fetch(`/api/admin/shipping?secret=${secret}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_shop: Number(form.id_shop),
+        costo: Number(form.costo) || 0,
+        soglia_gratis: form.soglia_gratis ? Number(form.soglia_gratis) : null,
+        corriere: form.corriere || null,
+        giorni_min: form.giorni_min ? Number(form.giorni_min) : null,
+        giorni_max: form.giorni_max ? Number(form.giorni_max) : null,
+        note: form.note || null,
+      }),
+    });
+    setNewShippingForm(emptyShippingForm);
+    setEditShipping(null);
+    flash("Regola salvata");
+    setSaving(false);
+    load();
+  }
+
+  async function delShipping(id: number) {
+    if (!confirm("Eliminare la regola di spedizione?")) return;
+    await fetch(`/api/admin/shipping?secret=${secret}&id=${id}`, { method: "DELETE" });
+    flash("Regola eliminata");
+    load();
+  }
+
+  function openEditShipping(r: ShippingRule) {
+    setEditShippingForm({
+      id_shop: String(r.id_shop),
+      costo: String(r.costo),
+      soglia_gratis: r.soglia_gratis != null ? String(r.soglia_gratis) : "",
+      corriere: r.corriere ?? "",
+      giorni_min: r.giorni_min != null ? String(r.giorni_min) : "",
+      giorni_max: r.giorni_max != null ? String(r.giorni_max) : "",
+      note: r.note ?? "",
+    });
+    setEditShipping(r);
+  }
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-zinc-100 mb-1">Shop & Link acquisto</h2>
@@ -204,11 +297,11 @@ export default function ShopTab({ secret }: Props) {
       {msg && <p className="text-emerald-400 text-sm mb-4">{msg}</p>}
 
       {/* Tab switcher */}
-      <div className="flex gap-2 mb-6">
-        {(["shop", "links"] as const).map(t => (
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {(["shop", "links", "shipping"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`text-sm px-4 py-2 rounded-lg transition-colors ${tab === t ? "bg-emerald-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-100"}`}>
-            {t === "shop" ? `Negozi (${shops.length})` : `Link acquisto (${links.length})`}
+            {t === "shop" ? `Negozi (${shops.length})` : t === "links" ? `Link acquisto (${links.length})` : `Spedizioni (${shippingRules.length})`}
           </button>
         ))}
       </div>
@@ -307,10 +400,65 @@ export default function ShopTab({ secret }: Props) {
         </>
       )}
 
+      {/* === TAB SPEDIZIONI === */}
+      {tab === "shipping" && (
+        <>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+            <h3 className="text-sm font-semibold text-zinc-200 mb-4">Nuova regola spedizione</h3>
+            <ShippingFields form={newShippingForm} setForm={setNewShippingForm} shops={shops} />
+            <div className="mt-4">
+              <button onClick={() => saveShipping(newShippingForm)} disabled={!newShippingForm.id_shop || saving}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg font-medium transition-colors">
+                Salva regola
+              </button>
+            </div>
+          </div>
+
+          {loading ? <p className="text-zinc-500 text-sm">Caricamento...</p> : (
+            <div className="space-y-2">
+              {shippingRules.map(r => {
+                const soglia = r.soglia_gratis != null ? `Gratis sopra €${Number(r.soglia_gratis).toFixed(2)}` : "Mai gratuita";
+                const giorni = r.giorni_min && r.giorni_max ? `${r.giorni_min}–${r.giorni_max}gg` : null;
+                return (
+                  <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 hover:bg-zinc-800/30 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-zinc-100 text-sm font-medium">{r.shop_nome}</span>
+                          <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded">
+                            €{Number(r.costo).toFixed(2)} spedizione
+                          </span>
+                          <span className="text-xs text-zinc-500">{soglia}</span>
+                          {r.corriere && <span className="text-xs text-zinc-600">{r.corriere}</span>}
+                          {giorni && <span className="text-xs text-zinc-600">{giorni}</span>}
+                        </div>
+                        {r.note && <p className="text-xs text-zinc-500 italic">{r.note}</p>}
+                      </div>
+                      <div className="flex gap-3 shrink-0">
+                        <button onClick={() => openEditShipping(r)} className="text-zinc-400 hover:text-zinc-100 text-xs transition-colors">Modifica</button>
+                        <button onClick={() => delShipping(r.id)} className="text-red-500 hover:text-red-400 text-xs transition-colors">Elimina</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {shippingRules.length === 0 && <p className="text-zinc-600 text-sm py-4 text-center">Nessuna regola configurata.</p>}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Modale edit negozio */}
       {editShop && (
         <Modal title={`Modifica — ${editShop.nome}`} onClose={() => setEditShop(null)} onSave={saveEditShop} saving={saving} size="lg">
           <ShopFields form={editShopForm} setForm={setEditShopForm} />
+        </Modal>
+      )}
+
+      {/* Modale edit spedizione */}
+      {editShipping && (
+        <Modal title={`Spedizione — ${editShipping.shop_nome}`} onClose={() => setEditShipping(null)} onSave={() => saveShipping(editShippingForm)} saving={saving} size="lg">
+          <ShippingFields form={editShippingForm} setForm={setEditShippingForm} shops={shops} />
         </Modal>
       )}
     </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import ConfróntoBar from "@/components/ConfróntoBar";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="it" className={inter.variable}>
       <body>
         {children}
+        <ConfróntoBar />
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-DJ0QM4716H" strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">{`
           window.dataLayer = window.dataLayer || [];

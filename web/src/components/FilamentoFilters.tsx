@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState, useEffect } from "react";
+import { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { FilamentoRow } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
@@ -55,21 +55,31 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
   const pathname = usePathname();
   const params = useSearchParams();
 
-  const q        = params.get("q")        ?? "";
-  const tipo     = params.get("tipo")     ?? "";
-  const brand    = params.get("brand")    ?? "";
-  const diametro = params.get("diametro") ?? "";
-  const famiglia = params.get("colore")   ?? "";
-  const peso     = params.get("peso")     ?? "";
-  const prezzoMax= params.get("maxkg")    ?? "";
-  const refill   = params.get("refill")   ?? "";
-  const sortBy   = (params.get("sort")   ?? "prezzo") as SortKey;
-  const view     = (params.get("view")   ?? "grid")   as "grid" | "table";
+  const q          = params.get("q")          ?? "";
+  const tipo       = params.get("tipo")       ?? "";
+  const brand      = params.get("brand")      ?? "";
+  const diametro   = params.get("diametro")   ?? "";
+  const famiglia   = params.get("colore")     ?? "";
+  const peso       = params.get("peso")       ?? "";
+  const prezzoMax  = params.get("maxkg")      ?? "";
+  const prezzoEur  = params.get("maxeur")     ?? "";
+  const refill     = params.get("refill")     ?? "";
+  const disponibile= params.get("disponibile")?? "";
+  const sortBy     = (params.get("sort")      ?? "prezzo") as SortKey;
+  const view       = (params.get("view")      ?? "grid")   as "grid" | "table";
 
   // Local state for debounced search
   const [localQ, setLocalQ] = useState(q);
   // Mobile filters toggle
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Server-filtered results (replaces client useMemo filtering)
+  const [fetchedFilamenti, setFetchedFilamenti] = useState<FilamentoRow[]>(filamenti);
+  const [loading, setLoading] = useState(false);
+  const mounted = useRef(false);
+  // Infinite scroll
+  const PAGE_SIZE = 48;
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Sync when URL param changes (e.g. reset)
   useEffect(() => {
@@ -92,53 +102,88 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
     return () => clearTimeout(t);
   }, [localQ, setParam]);
 
+  // Fetch from API when filter params change (server-side filtering)
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      // Server pre-filters only tipo+brand. If other filters active on mount, fetch now.
+      const needsInitialFetch = q || diametro || famiglia || peso || prezzoMax || prezzoEur || refill || disponibile;
+      if (!needsInitialFetch) return;
+    }
+
+    const controller = new AbortController();
+    setLoading(true);
+
+    const sp = new URLSearchParams();
+    if (q) sp.set("q", q);
+    if (tipo) sp.set("tipo", tipo);
+    if (brand) sp.set("brand", brand);
+    if (diametro) sp.set("diametro", diametro);
+    if (famiglia) sp.set("famiglia", famiglia);
+    if (peso) sp.set("peso", peso);
+    if (prezzoMax) sp.set("prezzo_max", prezzoMax);
+    if (prezzoEur) sp.set("maxeur", prezzoEur);
+    if (refill) sp.set("refill", refill);
+    if (disponibile) sp.set("disponibile", disponibile);
+
+    fetch(`/api/filamenti?${sp.toString()}`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((data: FilamentoRow[]) => setFetchedFilamenti(data))
+      .catch((e) => { if (e.name !== "AbortError") console.error(e); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+
+    return () => controller.abort();
+  }, [q, tipo, brand, diametro, famiglia, peso, prezzoMax, prezzoEur, refill, disponibile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const resetAll = useCallback(() => {
     router.replace(pathname, { scroll: false });
-  }, [pathname, router]);
+    setFetchedFilamenti(filamenti);
+    setDisplayCount(PAGE_SIZE);
+  }, [pathname, router, filamenti, PAGE_SIZE]);
 
+  // Client-side sort only (filtering is done server-side)
   const filtered = useMemo(() => {
-    const result = filamenti.filter((f) => {
-      if (tipo && f.tipo !== tipo) return false;
-      if (brand && f.brand !== brand) return false;
-      if (diametro && String(f.diametro_mm) !== diametro) return false;
-      if (famiglia && f.colore_famiglia !== famiglia) return false;
-      if (peso && f.peso_g !== Number(peso)) return false;
-      if (prezzoMax && f.prezzo_per_kg_min != null && Number(f.prezzo_per_kg_min) > Number(prezzoMax)) return false;
-      if (refill === "yes" && !f.is_refill) return false;
-      if (refill === "no" && f.is_refill) return false;
-      if (q) {
-        const search = q.toLowerCase();
-        const text = [f.brand, f.tipo, f.variante, f.colore, f.colore_famiglia]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!text.includes(search)) return false;
+    if (view !== "grid") return fetchedFilamenti;
+    return [...fetchedFilamenti].sort((a, b) => {
+      if (sortBy === "prezzo") {
+        const pa = a.prezzo_per_kg_min != null ? Number(a.prezzo_per_kg_min) : Infinity;
+        const pb = b.prezzo_per_kg_min != null ? Number(b.prezzo_per_kg_min) : Infinity;
+        return pa - pb;
       }
-      return true;
+      if (sortBy === "prezzo_min") {
+        const pa = a.prezzo_min != null ? Number(a.prezzo_min) : Infinity;
+        const pb = b.prezzo_min != null ? Number(b.prezzo_min) : Infinity;
+        return pa - pb;
+      }
+      if (sortBy === "peso") return (a.peso_g ?? 0) - (b.peso_g ?? 0);
+      if (sortBy === "colore") return (a.colore ?? "").localeCompare(b.colore ?? "");
+      if (sortBy === "brand") return `${a.brand}${a.variante}`.localeCompare(`${b.brand}${b.variante}`);
+      return `${a.tipo}${a.variante}`.localeCompare(`${b.tipo}${b.variante}`);
     });
-    // Grid sort only (table handles its own sorting internally via TanStack)
-    if (view === "grid") {
-      return result.sort((a, b) => {
-        if (sortBy === "prezzo") {
-          const pa = a.prezzo_per_kg_min != null ? Number(a.prezzo_per_kg_min) : Infinity;
-          const pb = b.prezzo_per_kg_min != null ? Number(b.prezzo_per_kg_min) : Infinity;
-          return pa - pb;
-        }
-        if (sortBy === "prezzo_min") {
-          const pa = a.prezzo_min != null ? Number(a.prezzo_min) : Infinity;
-          const pb = b.prezzo_min != null ? Number(b.prezzo_min) : Infinity;
-          return pa - pb;
-        }
-        if (sortBy === "peso") return (a.peso_g ?? 0) - (b.peso_g ?? 0);
-        if (sortBy === "colore") return (a.colore ?? "").localeCompare(b.colore ?? "");
-        if (sortBy === "brand") return `${a.brand}${a.variante}`.localeCompare(`${b.brand}${b.variante}`);
-        return `${a.tipo}${a.variante}`.localeCompare(`${b.tipo}${b.variante}`);
-      });
-    }
-    return result;
-  }, [filamenti, q, tipo, brand, diametro, famiglia, peso, prezzoMax, sortBy, view]);
+  }, [fetchedFilamenti, sortBy, view]);
 
-  const hasFilters = q || tipo || brand || diametro || famiglia || peso || prezzoMax || refill;
+  // Reset display count when filtered results change
+  useEffect(() => {
+    setDisplayCount(PAGE_SIZE);
+  }, [filtered, PAGE_SIZE]);
+
+  // Infinite scroll: observe sentinel at bottom of grid
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setDisplayCount((c) => c + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }); // runs after every render — sentinel re-observed as list grows
+
+  const hasFilters = q || tipo || brand || diametro || famiglia || peso || prezzoMax || prezzoEur || refill || disponibile;
 
   const formatPeso = (p: string) => {
     const n = Number(p);
@@ -275,6 +320,25 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
               onChange={(e) => setParam("maxkg", e.target.value)}
               className={`${sel} w-28`}
             />
+            <input
+              type="number"
+              placeholder="Max €"
+              value={prezzoEur}
+              onChange={(e) => setParam("maxeur", e.target.value)}
+              className={`${sel} w-24`}
+            />
+            {/* Toggle disponibile */}
+            <button
+              onClick={() => setParam("disponibile", disponibile === "1" ? "" : "1")}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                disponibile === "1"
+                  ? "bg-emerald-900/50 border-emerald-700 text-emerald-400"
+                  : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${disponibile === "1" ? "bg-emerald-400" : "bg-zinc-600"}`} />
+              Disponibili
+            </button>
             {/* Toggle refill */}
             <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1">
               <button
@@ -424,6 +488,23 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
               Max €{prezzoMax}/kg <span className="text-zinc-500">×</span>
             </button>
           )}
+          {prezzoEur && (
+            <button
+              onClick={() => setParam("maxeur", "")}
+              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Max €{prezzoEur} <span className="text-zinc-500">×</span>
+            </button>
+          )}
+          {disponibile === "1" && (
+            <button
+              onClick={() => setParam("disponibile", "")}
+              className="flex items-center gap-1.5 bg-emerald-900/50 text-emerald-300 text-xs px-2 py-1 rounded-full hover:bg-emerald-900 transition-colors"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              Solo disponibili <span className="text-emerald-600">×</span>
+            </button>
+          )}
           {refill === "yes" && (
             <button
               onClick={() => setParam("refill", "")}
@@ -443,28 +524,42 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
         </div>
       )}
 
-      {/* Conteggio */}
-      <p className="text-sm text-zinc-500 mb-4">
-        {filtered.length} filament{filtered.length !== 1 ? "i" : "o"} trovat{filtered.length !== 1 ? "i" : "o"}
+      {/* Conteggio + loading */}
+      <p className="text-sm text-zinc-500 mb-4 flex items-center gap-2">
+        {loading ? (
+          <>
+            <span className="inline-block w-3.5 h-3.5 border-2 border-zinc-600 border-t-emerald-400 rounded-full animate-spin" />
+            Caricamento…
+          </>
+        ) : (
+          <>{filtered.length} filament{filtered.length !== 1 ? "i" : "o"} trovat{filtered.length !== 1 ? "i" : "o"}</>
+        )}
       </p>
 
-      {filtered.length === 0 ? (
+      {!loading && filtered.length === 0 ? (
         <div className="text-center py-16 text-zinc-500">
           Nessun filamento corrisponde ai filtri selezionati.
         </div>
       ) : view === "grid" ? (
-        /* ── Vista Griglia ── */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filtered.map((f) => (
-            <FilamentoCard
-              key={f.id}
-              f={f}
-            />
-          ))}
-        </div>
+        /* ── Vista Griglia con infinite scroll ── */
+        <>
+          <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
+            {filtered.slice(0, displayCount).map((f) => (
+              <FilamentoCard key={f.id} f={f} />
+            ))}
+          </div>
+          {/* Sentinel: trigger per caricare altri item */}
+          {displayCount < filtered.length && (
+            <div ref={sentinelRef} className="flex justify-center items-center py-8 mt-2">
+              <span className="inline-block w-5 h-5 border-2 border-zinc-700 border-t-emerald-400 rounded-full animate-spin" />
+            </div>
+          )}
+        </>
       ) : (
         /* ── Vista Tabella (TanStack Table) ── */
-        <FilamentoTable filamenti={filtered} />
+        <div className={`transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
+          <FilamentoTable filamenti={filtered} />
+        </div>
       )}
     </div>
   );

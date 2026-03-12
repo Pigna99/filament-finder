@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FilamentoRow } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
+import ConfróntoButton from "./ConfróntoButton";
 
 interface Props {
   f: FilamentoRow;
@@ -32,6 +33,7 @@ export default function FilamentoCard({ f }: Props) {
   const prezzoMin = f.prezzo_min ? `da € ${Number(f.prezzo_min).toFixed(2)}` : null;
 
   return (
+    <div className="relative">
     <Link
       href={`/filamento/${slug}`}
       className="group block bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-emerald-500/50 transition-all hover:shadow-lg hover:shadow-emerald-500/5"
@@ -127,5 +129,7 @@ export default function FilamentoCard({ f }: Props) {
         )}
       </div>
     </Link>
+    <ConfróntoButton id={f.id} />
+    </div>
   );
 }

@@ -48,6 +48,29 @@ logging.basicConfig(
 )
 log = logging.getLogger("scraper")
 
+# ── HTTP con retry ────────────────────────────────────────────────────────────
+
+def http_get(session: requests.Session, url: str, max_retries: int = 3, **kwargs) -> requests.Response:
+    """GET con retry esponenziale su errori 429/5xx e timeout."""
+    for attempt in range(max_retries):
+        try:
+            r = session.get(url, timeout=kwargs.pop("timeout", 20), **kwargs)
+            if r.status_code == 429 or r.status_code >= 500:
+                wait = 2 ** attempt + random.random()
+                log.warning(f"  HTTP {r.status_code} su {url[:80]} — retry {attempt+1}/{max_retries} in {wait:.1f}s")
+                time.sleep(wait)
+                continue
+            return r
+        except requests.exceptions.Timeout:
+            wait = 2 ** attempt
+            log.warning(f"  Timeout su {url[:80]} — retry {attempt+1}/{max_retries} in {wait}s")
+            time.sleep(wait)
+        except requests.exceptions.RequestException as e:
+            log.error(f"  Errore HTTP: {e}")
+            raise
+    raise requests.exceptions.RetryError(f"Fallito dopo {max_retries} tentativi: {url}")
+
+
 # ── Tabelle di riconoscimento ─────────────────────────────────────────────────
 
 # Ordine importante: tipi più specifici prima
@@ -1627,7 +1650,7 @@ def scrape_elegoo_impact(db: DB):
     url = f"{IMPACT_API_BASE}/Mediapartners/{IMPACT_ACCOUNT_SID}/Catalogs/{IMPACT_CATALOG_IT}/Items?PageSize=250"
     while url:
         try:
-            r = session.get(url, timeout=20)
+            r = http_get(session, url, timeout=20)
             r.raise_for_status()
             data = r.json()
         except Exception as e:
@@ -1979,7 +2002,7 @@ def scrape_amazon_search(session: requests.Session, query: str) -> list[dict]:
     """
     url = f"{AMAZON_BASE}/s?k={quote(query)}&i=industrial"
     try:
-        r = session.get(url, timeout=15)
+        r = http_get(session, url, timeout=15)
         r.raise_for_status()
     except Exception as e:
         log.warning(f"  Amazon search error ({query!r}): {e}")

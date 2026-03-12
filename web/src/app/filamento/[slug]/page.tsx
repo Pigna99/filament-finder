@@ -10,6 +10,7 @@ import {
   getStoricoPrezzi,
   getTags,
   getVariantiModello,
+  getCompatibiliPrinters,
 } from "@/lib/filamenti";
 
 export const revalidate = 900;
@@ -45,11 +46,12 @@ export default async function FilamentoPage({ params }: Props) {
   const f = await getFilamentoBySlug(slug).catch(() => null);
   if (!f) notFound();
 
-  const [prezziShop, storico, tags, variantiModello] = await Promise.all([
+  const [prezziShop, storico, tags, variantiModello, stampanti] = await Promise.all([
     getPrezziShop(f.id).catch(() => []),
     getStoricoPrezzi(f.id).catch(() => []),
     getTags(f.id).catch(() => []),
     getVariantiModello(f.id_brand, f.id_type, f.id_variant).catch(() => []),
+    getCompatibiliPrinters(f.id_variant).catch(() => []),
   ]);
 
   const storicoSerializable = storico.map((p) => ({
@@ -73,6 +75,15 @@ export default async function FilamentoPage({ params }: Props) {
     brand: { "@type": "Brand", name: f.brand },
     ...(f.link_immagine ? { image: f.link_immagine } : {}),
     url: `${base}/filamento/${slug}`,
+    ...(f.rating_medio && f.num_recensioni > 0 ? {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: Number(f.rating_medio).toFixed(1),
+        ratingCount: f.num_recensioni,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    } : {}),
     ...(prezziShop.length > 0 ? {
       offers: {
         "@type": "AggregateOffer",
@@ -239,9 +250,34 @@ export default async function FilamentoPage({ params }: Props) {
                           {p.codice_sconto && disponibile && (
                             <span className="text-xs text-amber-400">Coupon: {p.codice_sconto}</span>
                           )}
-                          {p.prezzo_spedizione > 0 && disponibile && (
-                            <span className="text-xs text-zinc-500"> + €{Number(p.prezzo_spedizione).toFixed(2)} spedizione</span>
-                          )}
+                          {(() => {
+                            const hasSRule = p.shipping_costo != null;
+                            const prezzo = Number(p.prezzo_finale);
+                            const soglia = p.shipping_soglia_gratis != null ? Number(p.shipping_soglia_gratis) : null;
+                            const isFree = hasSRule && soglia != null && prezzo >= soglia;
+                            const costo = hasSRule ? Number(p.shipping_costo) : Number(p.prezzo_spedizione);
+                            const giorni = p.shipping_giorni_min && p.shipping_giorni_max
+                              ? `${p.shipping_giorni_min}–${p.shipping_giorni_max}gg`
+                              : null;
+                            if (!disponibile) return null;
+                            return (
+                              <div className="flex flex-col gap-0.5 mt-0.5">
+                                <span className={`text-xs ${isFree || costo === 0 ? "text-emerald-500" : "text-zinc-500"}`}>
+                                  {isFree || (!hasSRule && costo === 0)
+                                    ? "Spedizione gratuita"
+                                    : `+ €${costo.toFixed(2)} spedizione${soglia != null ? ` · gratis sopra €${soglia.toFixed(2)}` : ""}`}
+                                </span>
+                                {(p.shipping_corriere || giorni) && (
+                                  <span className="text-xs text-zinc-600">
+                                    {[p.shipping_corriere, giorni].filter(Boolean).join(" · ")}
+                                  </span>
+                                )}
+                                {p.shipping_note && (
+                                  <span className="text-xs text-zinc-600 italic">{p.shipping_note}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="text-right">
                           {disponibile ? (
@@ -277,6 +313,32 @@ export default async function FilamentoPage({ params }: Props) {
                   Storico prezzi
                 </h2>
                 <PriceChart data={storicoSerializable} height={200} />
+              </div>
+            )}
+
+            {/* Stampanti compatibili */}
+            {stampanti.length > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+                <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">
+                  Compatibilità stampanti
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {stampanti.map((p) => (
+                    <div
+                      key={p.id}
+                      title={p.note ?? undefined}
+                      className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border ${
+                        p.compatibile
+                          ? "bg-emerald-950/40 border-emerald-800/50 text-emerald-300"
+                          : "bg-zinc-800/40 border-zinc-700/50 text-zinc-500 line-through"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.compatibile ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                      {p.brand ? `${p.brand} ` : ""}{p.nome}
+                      <span className="text-zinc-600">⌀{p.diametro_mm}mm</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

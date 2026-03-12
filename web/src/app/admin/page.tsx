@@ -9,17 +9,19 @@ import FilamentiTab from "./components/FilamentiTab";
 import ShopTab from "./components/ShopTab";
 import PrezziTab from "./components/PrezziTab";
 import TagsTab from "./components/TagsTab";
+import StampantiTab from "./components/StampantiTab";
 import DatabaseTab from "./components/DatabaseTab";
 
 const TABS = [
-  { key: "brand",     label: "Brand",      icon: "🏷️" },
-  { key: "tipi",      label: "Tipi",       icon: "🧱" },
-  { key: "varianti",  label: "Varianti",   icon: "✨" },
-  { key: "filamenti", label: "Filamenti",  icon: "🧵" },
-  { key: "shop",      label: "Shop & Link",icon: "🛒" },
-  { key: "prezzi",    label: "Prezzi",     icon: "💶" },
-  { key: "tags",      label: "Tag",        icon: "🔖" },
-  { key: "database",  label: "Database",   icon: "🗄️" },
+  { key: "brand",      label: "Brand",       icon: "🏷️" },
+  { key: "tipi",       label: "Tipi",        icon: "🧱" },
+  { key: "varianti",   label: "Varianti",    icon: "✨" },
+  { key: "filamenti",  label: "Filamenti",   icon: "🧵" },
+  { key: "shop",       label: "Shop & Link", icon: "🛒" },
+  { key: "prezzi",     label: "Prezzi",      icon: "💶" },
+  { key: "tags",       label: "Tag",         icon: "🔖" },
+  { key: "stampanti",  label: "Stampanti",   icon: "🖨️" },
+  { key: "database",   label: "Database",    icon: "🗄️" },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -117,8 +119,9 @@ function AdminDashboard() {
           {tab === "filamenti" && <FilamentiTab secret={secret} />}
           {tab === "shop"      && <ShopTab      secret={secret} />}
           {tab === "prezzi"    && <PrezziTab    secret={secret} />}
-          {tab === "tags"      && <TagsTab      secret={secret} />}
-          {tab === "database"  && <DatabaseTab  secret={secret} />}
+          {tab === "tags"       && <TagsTab       secret={secret} />}
+          {tab === "stampanti"  && <StampantiTab  secret={secret} />}
+          {tab === "database"   && <DatabaseTab   secret={secret} />}
         </main>
       </div>
     </div>
