@@ -38,7 +38,11 @@ export default async function HomePage() {
     getSiteStats().catch(() => ({ num_filamenti: 0, num_shop: 0 })),
   ]);
 
-  const guideInEvidence = GUIDE.slice(0, 4);
+  // Mostra 4 guide variegate: 2 materiali + 2 pratiche
+  const GUIDE_HOMEPAGE = ["pla", "petg", "calibrazione", "inceppamento"];
+  const guideInEvidence = GUIDE_HOMEPAGE
+    .map((slug) => GUIDE.find((g) => g.slug === slug))
+    .filter(Boolean) as typeof GUIDE;
 
   return (
     <>

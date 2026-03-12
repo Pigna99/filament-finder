@@ -633,6 +633,410 @@ export const GUIDE: Guida[] = [
       },
     ],
   },
+
+  // ── PETG-CF ────────────────────────────────────────────────────────────────
+  {
+    slug: "petg-cf",
+    titolo: "Guida al PETG-CF",
+    sottotitolo: "Resistenza meccanica e termica con fibra di carbonio",
+    tipo: "PETG-CF",
+    icona: "🔷",
+    intro:
+      "Il PETG-CF combina la base PETG — impermeabile, resistente agli urti e facile da stampare — con fibre di carbonio corte che aumentano significativamente la rigidità e riducono il peso. Il risultato è un materiale tecnico ad alte prestazioni con un caratteristico aspetto opaco grigio-scuro, ideale per parti funzionali che richiedono sia resistenza meccanica che termica.",
+    parametri: [
+      { label: "Temp. stampa",   valore: "230–260 °C" },
+      { label: "Temp. piatto",   valore: "70–90 °C" },
+      { label: "Nozzle",         valore: "Hardened obbligatorio (acciaio temperato o rubino)" },
+      { label: "Difficoltà",     valore: "Medio" },
+      { label: "Enclosure",      valore: "Consigliata ma non obbligatoria" },
+    ],
+    pros: [
+      "Rigidità nettamente superiore al PETG standard",
+      "Mantiene la resistenza all'umidità e agli agenti chimici del PETG",
+      "Aspetto estetico professionale — opaco, texture carbonio",
+      "Nessun warping significativo (meglio di ABS e PA-CF)",
+      "Temperature di stampa più basse rispetto a PA-CF",
+      "Ottima adesione tra layer anche senza enclosure",
+    ],
+    cons: [
+      "Richiede obbligatoriamente un nozzle hardened",
+      "Più stringing del PETG standard — da gestire con calibrazione",
+      "Fragile agli urti puri (le fibre aumentano rigidità, non tenacità)",
+      "Prezzo più elevato del PETG base",
+      "Superficie più ruvida del PETG — difficile da levigare",
+    ],
+    consigli: [
+      "Usa sempre un nozzle in acciaio temperato o hardened: il PETG-CF logora l'ottone in poche ore",
+      "Stampa a 240–250 °C per ridurre lo stringing; aumenta se hai under-extrusion",
+      "Aumenta il flow del 5–8% rispetto al PETG standard per compensare la minore scorrevolezza",
+      "L'enclosure non è obbligatoria ma riduce lo stringing e migliora la coesione dei layer",
+      "Abbassa la velocità del 15–20% rispetto al PETG base per risultati più precisi",
+      "Essicca la bobina a 65 °C per 4–6 ore se rimasta all'aria — il PETG-CF è igroscopico",
+    ],
+    sezioni: [
+      {
+        titolo: "PETG-CF vs PLA-CF vs PA-CF",
+        testo:
+          "PLA-CF: il più facile, temperature basse, ottimo per parti rigide non termiche. PETG-CF: bilanciato — più resistente al calore del PLA-CF (fino a 80–85 °C), impermeabile, non richiede enclosure. PA-CF: il più prestazionale ma difficile da stampare, temperature elevate e enclosure obbligatoria. Per la maggior parte delle applicazioni funzionali quotidiane, il PETG-CF è il punto di equilibrio ideale.",
+      },
+      {
+        titolo: "Applicazioni ideali",
+        testo:
+          "Parti meccaniche leggere (staffe, supporti, giunti), componenti per droni, telai RC, custodie per elettronica, parti outdoor resistenti agli UV, elementi strutturali stampanti 3D, protezioni e coperture in ambienti umidi.",
+      },
+      {
+        titolo: "Migliori brand",
+        testo:
+          "Bambu Lab PETG-CF (ottimo per stampanti Bambu, nozzle hardened incluso nelle X-series), eSUN PETG+CF (economico e affidabile), Polymaker PolyMax PETG-CF (tolleranze eccellenti), 3DJake PETG-CF (buon rapporto qualità-prezzo).",
+      },
+    ],
+    correlate: ["pla-cf", "petg", "nylon-pa"],
+    titoloProdotti: "Filamenti PETG-CF consigliati",
+    descrizioneProdotti: "PETG rinforzato con fibra di carbonio: resistenza e rigidità senza rinunciare alla stampabilità. Nozzle hardened obbligatorio.",
+    prodottiConsigliati: [
+      {
+        nome: "Bambu Lab PETG-CF Nero 1000g",
+        nomeBrevissimo: "Bambu Lab PETG-CF",
+        descrizione: "PETG-CF di Bambu Lab: ottima stampabilità, specie sulle stampanti Bambu X-series con nozzle hardened integrato.",
+        badge: "Best Value",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/48116_d1a7ddb5.128x128.webp",
+        affiliateLink: "https://www.3djake.it/bambu-lab/petg-cf-black",
+      },
+      {
+        nome: "Polymaker PolyMax PETG-CF Nero 1000g",
+        nomeBrevissimo: "Polymaker PETG-CF",
+        descrizione: "PETG-CF premium di Polymaker: tolleranze strettissime, basso stringing e ottima adesione tra layer.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/28272_6f3e2d00.128x128.png",
+        affiliateLink: "https://www.3djake.it/polymaker/polymide-petgcf-black",
+      },
+      {
+        nome: "eSUN PETG+CF Nero 1000g",
+        nomeBrevissimo: "eSUN PETG-CF",
+        descrizione: "PETG-CF economico di eSUN: buona rigidità e resistenza all'umidità, ideale per chi inizia con i compositi.",
+        badge: "Versatile",
+        imageUrl: "https://ueeshop.ly200-cdn.com/u_file/UPBC/UPBC810/2411/25/products/5e619cb995.jpg",
+        affiliateLink: "https://www.3djake.it/esun/petg-cf-black",
+      },
+    ],
+  },
+
+  // ── PC ─────────────────────────────────────────────────────────────────────
+  {
+    slug: "pc",
+    titolo: "Guida al Policarbonato (PC)",
+    sottotitolo: "Il materiale più resistente al calore tra i termoplastici FDM",
+    tipo: "PC",
+    icona: "🔴",
+    intro:
+      "Il Policarbonato (PC) è il materiale tecnico con la resistenza termica più alta tra i filamenti FDM comuni: regge fino a 110–130 °C senza deformarsi. È trasparente nella versione naturale, molto resistente agli urti e agli agenti chimici. Richiede però temperature di stampa elevate, enclosure obbligatoria e una stampante ben tarata. Non è per principianti, ma per applicazioni industriali o prototipi funzionali ad alte prestazioni non ha eguali.",
+    parametri: [
+      { label: "Temp. stampa",   valore: "250–300 °C" },
+      { label: "Temp. piatto",   valore: "90–120 °C" },
+      { label: "Enclosure",      valore: "Obbligatoria — temperatura interna > 50 °C" },
+      { label: "Difficoltà",     valore: "Difficile" },
+      { label: "Igroscopico",    valore: "Sì — essiccare sempre" },
+    ],
+    pros: [
+      "Resistenza termica fino a 110–130 °C (deflection temperature)",
+      "Eccellente resistenza agli urti — non si rompe di schianto",
+      "Ottica: versione trasparente con trasmissione luce > 85%",
+      "Resistente ad acidi leggeri, oli e carburanti",
+      "Ottima resistenza alla fatica meccanica ciclica",
+      "Materiale usato nell'industria (elmetti, visiere, componentistica auto)",
+    ],
+    cons: [
+      "Richiede temperature molto elevate (260–300 °C) — non tutte le stampanti le reggono",
+      "Warping forte: enclosure con temperatura interna > 50 °C è obbligatoria",
+      "Aderisce ai piani in modo irregolare — necessita surface preparation accurata",
+      "Molto igroscopico: si degrada in ore se non conservato correttamente",
+      "Il PC trasparente ingiallisce con esposizione UV prolungata",
+      "Prezzo più elevato di PLA/PETG/ABS",
+    ],
+    consigli: [
+      "Usa un hot-end all-metal: il PTFE non regge le temperature richieste dal PC",
+      "Stampa a 270–290 °C per la migliore adesione tra layer e minore porosità",
+      "Il piano deve essere a 100–110 °C con uno strato di collante (Magigoo PC, glue stick con PEI)",
+      "Enclosure con temperatura > 50 °C è fondamentale per ridurre il warping",
+      "Essicca sempre la bobina: 80 °C per 6–8 ore prima di ogni uso",
+      "Stampa lentamente (30–50 mm/s) per massima coesione dei layer",
+      "Se la stampante non raggiunge 260 °C, considera il PC/ABS (blend più facile da stampare)",
+    ],
+    sezioni: [
+      {
+        titolo: "PC vs ABS vs PA",
+        testo:
+          "ABS: simile per temperatura ma più facile da stampare, resistenza termica fino a 100 °C. PC: temperature più alte, resistenza termica superiore (fino a 130 °C) e migliore resistenza agli urti. PA (Nylon): resistenza meccanica estrema e flessibilità strutturale, ma più igroscopico. Scegli PC quando hai bisogno di resistenza termica molto elevata mantenendo ottima trasparenza o dimensioni precise.",
+      },
+      {
+        titolo: "PC/ABS: il blend più stampabile",
+        testo:
+          "Il blend PC/ABS combina la resistenza termica del PC con la stampabilità dell'ABS. Temperature di stampa 240–260 °C, enclosure consigliata ma meno critica. La resistenza termica è intermedia (95–105 °C) ma la stampabilità è nettamente migliore del PC puro. Ottimo compromesso per chi vuole le proprietà del PC senza affrontare la curva di apprendimento del PC 100%.",
+      },
+      {
+        titolo: "Applicazioni ideali",
+        testo:
+          "Involucri per elettronica che dissipano calore, componenti automotive interni, parti per macchine CNC, supporti per LED ad alta potenza, attrezzature per sterilizzazione, visiere e protezioni trasparenti, stampi per colata resina a bassa temperatura.",
+      },
+      {
+        titolo: "Preparazione della superficie",
+        testo:
+          "PEI texture + glue stick: la combinazione più affidabile. Garolite (G10): ottima per PC, non serve collante. BuildTak: buona adesione ma rimozione difficile. Kapton tape + hairspray: soluzione classica per chi ha piatti in vetro. Dopo la stampa, lascia raffreddare completamente prima di rimuovere (il PC si stacca facilmente a freddo).",
+      },
+    ],
+    correlate: ["abs-asa", "nylon-pa", "come-scegliere"],
+    titoloProdotti: "Filamenti PC e PC/ABS consigliati",
+    descrizioneProdotti: "Policarbonato e blends selezionati per resistenza termica estrema. Richiedono all-metal hot-end e enclosure.",
+    prodottiConsigliati: [
+      {
+        nome: "Polymaker PolyMax PC Nero 1000g",
+        nomeBrevissimo: "Polymaker PolyMax PC",
+        descrizione: "PC ottimizzato di Polymaker: temperatura ridotta rispetto al PC standard (240–260 °C), ottima resistenza agli urti e al calore.",
+        badge: "Best Value",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/29044_2dcaa79c.128x128.png",
+        affiliateLink: "https://www.3djake.it/polymaker/polymax-pc-black",
+      },
+      {
+        nome: "Fillamentum PC/ABS Traffic Black 1000g",
+        nomeBrevissimo: "Fillamentum PC/ABS",
+        descrizione: "Blend PC/ABS premium di Fillamentum: ottima stampabilità con proprietà termiche vicine al PC puro. Tolleranze eccellenti.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/33046_7e6b6b1c.128x128.jpg",
+        affiliateLink: "https://www.3djake.it/fillamentum/pc-abs-traffic-black",
+      },
+      {
+        nome: "Prusament PC Blend 970g",
+        nomeBrevissimo: "Prusament PC Blend",
+        descrizione: "PC Blend di Prusament con tolleranze ±0.02 mm: resistenza termica fino a 113 °C, ottima per stampanti Prusa.",
+        badge: "Precisione",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/45408_b62e8bb4.128x128.jpg",
+        affiliateLink: "https://www.3djake.it/prusament/pc-blend-prusament-natural-1",
+      },
+    ],
+  },
+
+  // ── CALIBRAZIONE ───────────────────────────────────────────────────────────
+  {
+    slug: "calibrazione",
+    titolo: "Come calibrare la stampante 3D",
+    sottotitolo: "Guida pratica a temperatura, flusso, retraction e primo layer",
+    icona: "🔧",
+    intro:
+      "Una calibrazione corretta è la differenza tra stampe perfette e ore di fallimenti. Non importa quanto costoso sia il filamento: se la stampante non è calibrata, i risultati saranno sempre deludenti. Questa guida copre le calibrazioni fondamentali nell'ordine giusto — dalla temperatura al flusso, dalla retraction al primo layer — per ottenere il massimo da ogni bobina.",
+    parametri: [
+      { label: "Tempo richiesto",   valore: "2–4 ore (una volta per setup)" },
+      { label: "Frequenza",         valore: "Ad ogni cambio filamento o brand" },
+      { label: "Difficoltà",        valore: "Medio — richiede pazienza" },
+      { label: "Strumenti",         valore: "Calibration cube, temp tower, flow test" },
+    ],
+    pros: [],
+    cons: [],
+    consigli: [
+      "Calibra sempre nell'ordine: temperatura → flusso (E-steps) → retraction → primo layer",
+      "Una temperature tower ti dà la temperatura ottimale visivamente in un'unica stampa",
+      "Non usare filamenti economici sconosciuti per calibrare: la variabilità del diametro falsa i risultati",
+      "Ri-calibra il flusso ad ogni cambio di brand anche per lo stesso tipo di filamento",
+      "Il cubo di calibrazione (20mm) è il test finale — misura con calibro: deve essere ±0.2mm",
+      "Annota sempre i parametri ottimali per ogni bobina in un foglio o nel slicer",
+    ],
+    sezioni: [
+      {
+        titolo: "1. Temperature Tower — trovare la temperatura ottimale",
+        testo:
+          "Stampa una temperature tower scaricando il modello da Printables o Thingiverse. Il modello cambia temperatura ogni sezione (es. da 220 °C a 190 °C a step di 5 °C). Cerca la sezione con: superficie più liscia, migliore definizione dei ponti (bridging), nessun stringing tra i pilastri. Quella è la tua temperatura ottimale. Parti sempre dai valori consigliati dal produttore del filamento e allargati di ±15 °C.",
+      },
+      {
+        titolo: "2. E-Steps / Flow Rate — calibrare l'estrusione",
+        testo:
+          "Segna 100mm di filamento sopra l'estrusore. Estrudi 100mm dal software. Misura quanto è effettivamente uscito. Se sono usciti meno di 100mm, aumenta gli E-steps (o flow%); se di più, diminuisci. Formula: E-steps corretti = (E-steps attuali × 100) / mm effettivi estrussi. Dopo gli E-steps base, rifina con il cube test: misura le pareti e correggi il flow% nello slicer.",
+      },
+      {
+        titolo: "3. Retraction — eliminare lo stringing",
+        testo:
+          "Stampa un test di retraction (es. twin towers) a varie distanze (2mm, 4mm, 6mm per Bowden; 1mm, 2mm, 3mm per Direct Drive). Cerca la combinazione con meno fili tra le torri senza sotto-estrusione. Parametri tipici: Direct Drive = 0.5–2mm a 25–45 mm/s; Bowden = 4–7mm a 40–60 mm/s. Troppa retraction causa heat creep e click dell'estrusore.",
+      },
+      {
+        titolo: "4. Livellamento e primo layer",
+        testo:
+          "Il primo layer è il più critico. Usa il babystep Z durante la prima stampa per trovare l'offset esatto: il layer deve essere leggermente compresso (aspetto traslucido, non gonfi e arrotondati). Il Live Adjust Z di PrusaSlicer e il baby step in Klipper/Marlin permettono di affinare in real-time. Con stampanti Bambu Lab e Creality con auto-leveling, usa il paper test solo come verifica finale.",
+      },
+      {
+        titolo: "5. Pressure Advance / Linear Advance",
+        testo:
+          "Klipper chiama questa funzione Pressure Advance (PA), Marlin Linear Advance (LA). Compensa la compressione del filamento nell'hotend agli angoli e alle accelerazioni. Stampa il test pattern ufficiale Klipper o il test LA di Teaching Tech. Il valore corretto elimina i 'blobbing' agli angoli e il sotto-riempimento dopo le curve. Tipicamente: 0.03–0.07 per Direct Drive, 0.5–1.0 per Bowden.",
+      },
+      {
+        titolo: "Strumenti e test consigliati",
+        testo:
+          "Calibration Cube (20mm): misura dimensioni X/Y/Z con calibro digitale. Temperature Tower: da Printables, adatta al tuo slicer. Retraction Test (twin towers): verifica stringing. Overhang Test: testa angoli 30°/45°/60°/70°. Bridging Test: testa ponti a varie lunghezze. Tutti questi file sono gratuiti su Printables.com o Thingiverse.com.",
+      },
+    ],
+    correlate: ["stampa-veloce", "inceppamento", "come-scegliere"],
+  },
+
+  // ── STAMPA VELOCE ──────────────────────────────────────────────────────────
+  {
+    slug: "stampa-veloce",
+    titolo: "Stampa ad alta velocità",
+    sottotitolo: "Come stampare più veloce senza perdere qualità",
+    icona: "⚡",
+    intro:
+      "Le stampanti moderne come Bambu Lab, Creality K-series e Voron con Klipper sono capaci di velocità impensabili fino a pochi anni fa: 300–600 mm/s sono ormai realtà. Ma stampare veloce non significa semplicemente alzare lo slider della velocità nello slicer — richiede calibrazioni specifiche, filamenti adatti e una stampante preparata per reggere le accelerazioni elevate.",
+    parametri: [
+      { label: "Velocità base (PLA)",      valore: "60–150 mm/s" },
+      { label: "Velocità alta (PLA HS)",   valore: "200–400 mm/s" },
+      { label: "Accelerazione",            valore: "3.000–20.000 mm/s² (dipende dalla macchina)" },
+      { label: "Requisito principale",     valore: "Input shaping + Pressure Advance (Klipper)" },
+    ],
+    pros: [],
+    cons: [],
+    consigli: [
+      "Non alzare solo la velocità: aumenta anche la temperatura di 5–10 °C per ogni +50% di velocità",
+      "I filamenti High Speed (HS) come Bambu PLA HF sono formulati per scorrere meglio ad alta velocità",
+      "L'Input Shaping (Klipper/Bambu) è fondamentale: senza di esso a 200+ mm/s si hanno ghost/ringing sulle pareti",
+      "Aumenta il flusso massimo volumetrico nello slicer (Volumetric Speed): punto di partenza 15–20 mm³/s",
+      "Abbassa lo strato a 0.15–0.20mm per compensare la minore qualità superficiale ad alta velocità",
+      "Il raffreddamento deve essere eccellente: parti non raffreddate bene collassano a velocità elevate",
+    ],
+    sezioni: [
+      {
+        titolo: "I limiti fisici della stampa veloce",
+        testo:
+          "Ci sono tre bottleneck principali: (1) Flusso volumetrico: l'hotend ha un limite di quanti mm³/s riesce a fondere. Un hotend standard arriva a ~10–15 mm³/s; un Volcano/CHT ad alta velocità a 30–50 mm³/s. (2) Risonanza meccanica: a velocità elevate, la struttura della stampante vibra causando ghost/ringing. Input Shaping misura e compensa queste vibrazioni. (3) Raffreddamento: il materiale depositato deve solidificarsi prima che il layer successivo lo schiacci — ventola potenziata e temperatura ambiente adeguata.",
+      },
+      {
+        titolo: "Input Shaping (Resonance Compensation)",
+        testo:
+          "Klipper offre Input Shaping con accelerometro ADXL345 integrato nella maggior parte delle build. Bambu Lab lo fa in automatico durante il calibration initial setup. Il principio: misura la frequenza di risonanza della stampante in X e Y, poi filtra le frequenze problematiche dal motion planning. Il risultato: zero ghost/ringing anche a 250+ mm/s. Su stampanti con Marlin si può usare una versione manuale (Marlin 2.x) ma meno precisa.",
+      },
+      {
+        titolo: "Filamenti HS (High Speed)",
+        testo:
+          "I filamenti HS sono formulati con additivi che migliorano la scorrevolezza ad alta temperatura senza degradare le proprietà meccaniche. Esempi: Bambu Lab PLA HF (High Flow), eSUN eHighSpeed PLA, Polymaker PolyLite PLA. Caratteristiche chiave: viscosità ridotta ad alta temperatura, minor stringing, maggiore stabilità termica alle velocità elevate. Non sono necessari per velocità < 150 mm/s, ma fanno differenza a 250+ mm/s.",
+      },
+      {
+        titolo: "Impostazioni slicer per la stampa veloce",
+        testo:
+          "In OrcaSlicer/BambuStudio: imposta Max Volumetric Speed (es. 20 mm³/s per PLA HS) invece di una velocità fissa — lo slicer calcola la velocità ottimale per ogni geometria. Aumenta la temperatura di 5–10 °C rispetto alla norma. Abbassa la Layer Height al 50–75% del diametro nozzle per migliore adesione. Aumenta i giri della ventola al 100% per raffreddamento massimo. Usa Line Width più larga (0.6–0.8mm) per aumentare il flusso senza alzare la velocità lineare.",
+      },
+      {
+        titolo: "Stampanti ottimizzate per la velocità",
+        testo:
+          "Bambu Lab A1/P1/X1 (CoreXY con input shaping automatico): 300–500 mm/s out of the box. Creality K1/K1 Max (CoreXY Klipper): 300–600 mm/s dopo ottimizzazione. Voron 2.4/Trident (DIY Klipper): 300–800 mm/s con hotend CHT. Prusa MK4/Core One (Nextruder): 200–300 mm/s con qualità eccellente. Stampanti Cartesian classiche (Ender 3): limite pratico 80–120 mm/s per il design meccanico.",
+      },
+    ],
+    correlate: ["calibrazione", "pla", "petg"],
+    prodottiConsigliati: [
+      {
+        nome: "Bambu Lab PLA HF (High Flow) 1000g",
+        nomeBrevissimo: "Bambu Lab PLA HF",
+        descrizione: "PLA High Flow di Bambu Lab: formulato per velocità 300–500 mm/s. Ottimo su Bambu X1/P1 con AMS.",
+        badge: "Best Value",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/48114_c8b3e7e4.128x128.webp",
+        affiliateLink: "https://www.3djake.it/bambu-lab/pla-hf-black",
+      },
+      {
+        nome: "eSUN PLA High Speed 1000g",
+        nomeBrevissimo: "eSUN PLA HS",
+        descrizione: "PLA High Speed di eSUN: buon flusso ad alta velocità, compatibile con tutte le stampanti CoreXY. Prezzo contenuto.",
+        badge: "Veloce",
+        imageUrl: "https://ueeshop.ly200-cdn.com/u_file/UPBC/UPBC810/2411/25/products/5e619cb995.jpg",
+        affiliateLink: "https://www.3djake.it/esun/pla-high-speed-black",
+      },
+      {
+        nome: "Polymaker PolyLite PLA Rapide 1000g",
+        nomeBrevissimo: "Polymaker PLA Rapide",
+        descrizione: "PLA ad alta velocità di Polymaker con tolleranze ±0.03mm: qualità costante anche a 250+ mm/s.",
+        badge: "Qualità",
+        imageUrl: "https://3d.nice-cdn.com/upload/image/product/large/default/28842_b0123abc.128x128.png",
+        affiliateLink: "https://www.3djake.it/polymaker/polylite-pla-rapide-black",
+      },
+    ],
+  },
+
+  // ── INCEPPAMENTO ───────────────────────────────────────────────────────────
+  {
+    slug: "inceppamento",
+    titolo: "Come risolvere gli inceppamenti",
+    sottotitolo: "Diagnosi e soluzione ai problemi più comuni della stampa 3D",
+    icona: "🔩",
+    intro:
+      "L'inceppamento (clog o jam) dell'ugello è uno dei problemi più frequenti nella stampa 3D FDM. Si manifesta come sotto-estrusione, linee mancanti, click dell'estrusore o filamento che non fuoriesce. Fortunatamente, la maggior parte degli inceppamenti segue pattern prevedibili — con la diagnosi giusta si risolve in pochi minuti.",
+    parametri: [
+      { label: "Sintomo principale",  valore: "Estrusore clicca, sotto-estrusione, filamento non esce" },
+      { label: "Causa più comune",    valore: "Temperatura troppo bassa o filamento umido" },
+      { label: "Tempo di risoluzione", valore: "5–30 minuti" },
+    ],
+    pros: [],
+    cons: [],
+    consigli: [
+      "Il 70% degli inceppamenti si risolve con una 'cold pull' (atomic pull)",
+      "Se l'estrusore clicca, verifica prima la temperatura — potrebbe essere 5 °C troppo bassa",
+      "Filamento crepitante durante la stampa = filamento umido → essicca prima di continuare",
+      "Non stampare mai sotto la temperatura minima indicata dal produttore",
+      "Pulisci l'ugello con un ago da 0.3mm ogni 5–10 kg di filamento stampato",
+      "Dopo un inceppamento, rimuovi sempre tutto il filamento prima di riprovare",
+    ],
+    sezioni: [
+      {
+        titolo: "Diagnosi rapida: che tipo di problema è?",
+        testo:
+          "Estrusore clicca a vuoto (skip): l'hotend è ostruito o la temperatura è troppo bassa. Sotto-estrusione intermittente: diametro filamento variabile, bobina aggrovigliata o hotend parzialmente ostruito. Nessun filamento esce: inceppamento totale o heat creep. Click + filamento si rompe: temperatura troppo bassa o retraction eccessiva. Filamento esce laterale dall'hotend: PTFE liner danneggiato o gap tra PTFE e nozzle.",
+      },
+      {
+        titolo: "Cold Pull (Atomic Pull) — la soluzione principe",
+        testo:
+          "Scalda l'hotend alla temperatura di stampa del materiale inceppato. Inserisci del Nylon o PLA se l'ugello è ostruito. Escludi poi il filamento manualmente mentre abbassi la temperatura a 90 °C (PLA) o 130 °C (PETG/ABS). Tira con forza decisa ma costante. Il filamento uscirà portando con sé i residui nell'ugello. Ripeti 2–3 volte fino a quando il filamento estratto non ha più residui scuri. È il metodo più efficace senza smontare l'hotend.",
+      },
+      {
+        titolo: "Heat Creep — l'inceppamento subdolo",
+        testo:
+          "Il heat creep avviene quando il calore risale dall'hotend nella zona fredda (cold zone), fondendo il filamento troppo in alto. Il filamento solidifica nella cold zone creando un tappo che l'estrusore non riesce a spingere. Sintomi: stampa che funziona all'inizio poi si blocca dopo 10–30 minuti. Cause: ventola del radiatore inefficiente, temperatura ambiente elevata, velocità di stampa troppo bassa (poco filamento a raffreddare la cold zone). Soluzione: pulisci o sostituisci la ventola del radiatore, aumenta la velocità minima, considera un all-metal hotend con migliore dissipazione.",
+      },
+      {
+        titolo: "Aghi e strumenti per la pulizia",
+        testo:
+          "Ago da 0.3–0.4mm (incluso in molte stampanti): con l'hotend caldo, inserisci nell'ugello dall'alto per spingere i residui. Piano di pulizia: brucia i residui sull'ugello con un accendino (catrami e bruciato) poi passa l'ago. Drill bit set: set di micro punte per pulire ugelli senza smontarli. Acetone (ABS/ASA): immergi l'ugello smontato per sciogliere i residui di materiale. Non usare acetone su componenti plastica dell'hotend.",
+      },
+      {
+        titolo: "Prevenzione: come evitare gli inceppamenti",
+        testo:
+          "Stampa sempre alla temperatura corretta per il filamento (usa una temperature tower). Essicca i filamenti igroscopici prima dell'uso. Usa filamenti di qualità con diametro costante (±0.05mm). Taglia sempre il filamento a 45° prima di inserirlo. Esegui una retraction calibrata (non eccessiva). Sostituisci il tubo PTFE ogni 6–12 mesi se usi materiali abrasivi o temperature elevate. Aggiungi un filtro filamento (spugna con olio minerale) per lubrificare leggermente e filtrare la polvere.",
+      },
+      {
+        titolo: "Quando sostituire l'ugello",
+        testo:
+          "Un ugello in ottone dura 300–500h di stampa con materiali non abrasivi (PLA, PETG, TPU). Con materiali abrasivi (CF, Nylon, ASA), un ugello in ottone dura 20–50h. Segnali di usura: diametro foro aumentato (sotto-estrusione con flusso corretto), superfici di stampa peggiorano, dimensioni non più precise. Gli ugelli costano poco (0.5–5€) — cambialo preventivamente ogni 500h con PLA, ogni 200h con PETG, ad ogni bobina di CF.",
+      },
+    ],
+    correlate: ["calibrazione", "conservazione", "stampa-veloce"],
+    prodottiConsigliati: [
+      {
+        nome: "Set ugelli ottone E3D V6 0.2–1.0mm",
+        nomeBrevissimo: "Set Ugelli E3D V6",
+        descrizione: "Set completo ugelli E3D compatibili con la maggior parte delle stampanti. Include 0.2, 0.4, 0.6, 0.8mm.",
+        badge: "Essenziale",
+        imageUrl: "https://m.media-amazon.com/images/I/61P4gJOjFhL._AC_SL1200_.jpg",
+        affiliateLink: "https://amzn.to/3YmM4qF",
+      },
+      {
+        nome: "Ugello Hardened Steel 0.4mm E3D",
+        nomeBrevissimo: "Ugello Hardened E3D",
+        descrizione: "Ugello in acciaio temperato per filamenti abrasivi (CF, GF, Glow). Dura 10× più di un ugello in ottone.",
+        badge: "Durevole",
+        imageUrl: "https://m.media-amazon.com/images/I/51gLWLBcfCL._AC_SL1500_.jpg",
+        affiliateLink: "https://amzn.to/3RZGLJF",
+      },
+      {
+        nome: "Filtro filamento + olio minerale",
+        nomeBrevissimo: "Filtro filamento",
+        descrizione: "Blocchetto spugna con olio minerale: lubrifica il filamento prima dell'estrusore, riduce attrito e inceppamenti.",
+        badge: "Preventivo",
+        imageUrl: "https://m.media-amazon.com/images/I/41OM6JVlDwL._AC_SL1500_.jpg",
+        affiliateLink: "https://amzn.to/4fRhGXB",
+      },
+    ],
+  },
 ];
 
 export function getGuida(slug: string): Guida | undefined {
