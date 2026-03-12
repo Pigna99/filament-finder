@@ -2074,14 +2074,27 @@ def scrape_amazon(db: DB):
                 skipped += 1
                 continue
 
+            # Salta prodotti di altri brand che citano un brand noto come compatibilità
+            # es. "SUNLU PLA Compatible with Bambu Lab" o "SUNLU PLA for Bambu Lab AMS"
+            COMPAT_PHRASES = [
+                "compatible with", "compatibile con", "for bambu", "per bambu",
+                "fits bambu", "works with", "designed for",
+            ]
+            if any(phrase in title_lower for phrase in COMPAT_PHRASES):
+                log.debug(f"    Skip compatibility product: {title[:70]}")
+                skipped += 1
+                continue
+
             # Trova brand nel DB
-            # IMPORTANTE: verifica che il titolo contenga effettivamente il brand
+            # IMPORTANTE: il brand deve essere all'inizio del titolo (primi 40 chars)
+            # per evitare falsi positivi tipo "SUNLU PLA Compatible with Bambu Lab"
+            title_start = title_lower[:40]
             brand_id = None
-            if brand_hint and brand_hint.lower() in title_lower:
+            if brand_hint and brand_hint.lower() in title_start:
                 brand_id = db.get_brand_id(brand_hint)
             if not brand_id:
                 for b in all_brands_sorted:
-                    if b["nome"].lower() in title_lower:
+                    if b["nome"].lower() in title_start:
                         brand_id = b["id"]
                         break
 
