@@ -1525,78 +1525,86 @@ IMPACT_CATALOG_IT  = "21456"   # Elegoo Product Datafeed for Italy — EUR
 IMPACT_API_BASE    = "https://api.impact.com"
 
 
-def _parse_elegoo_impact_name(name: str) -> tuple[str | None, str, str, int]:
+def _parse_elegoo_impact_name(name: str) -> tuple[str | None, str, str, int, bool]:
     """
-    Parsa il Nome dal catalog Impact per estrarre (tipo, variante, colore, peso_g).
-    Esempi:
-      "PLA Pro - True Red"                     → ("PLA", "Pro", "True Red", 1000)
-      "PETG-CF - Carbon Fiber Red"             → ("PETG-CF", "Standard", "Carbon Fiber Red", 1000)
-      "Rapid PETG - Blue"                      → ("PETG", "Rapid", "Blue", 1000)
-      "TPU 95A - Translucent"                  → ("TPU", "95A", "Translucent", 1000)
-      "PLA - PLA / Space Grey"                 → ("PLA", "Basic", "Space Grey", 1000)
-      "Bobina Rapid PLA Plus da 5kg - PLA+ / Blue" → ("PLA", "Plus", "Blue", 5000)
+    Parsa il Nome dal catalog Impact per estrarre (tipo, variante, colore, peso_g, is_refill).
+    Ritorna (None, ...) per nomi non riconosciuti (es. bundle multipli).
     """
-    # Rimuovi prefisso "Bobina ... da Nkg - "
-    name = re.sub(r'^Bobina\s.*?da\s+\d+\s*kg\s*-\s*', '', name, flags=re.I)
-    # Rimuovi "Bobina di filamento da N kg - "
-    name = re.sub(r'^Bobina di filamento da\s+\d+[\s,]*kg\s*-\s*', '', name, flags=re.I)
+    # Salta bundle
+    if re.match(r'^Bundle', name, re.I):
+        return None, "Standard", name, 1000, False
 
-    # Estrai peso dal nome originale
-    peso_g = detect_weight(name) or 1000
+    # Estrai peso: cerca "da N kg" o "N kg" nel nome originale
+    peso_match = re.search(r'(\d+(?:[.,]\d+)?)\s*kg', name, re.I)
+    peso_g = int(float(peso_match.group(1).replace(',', '.')) * 1000) if peso_match else 1000
 
-    # Dividi su " - ": sinistro = tipo+variante, destro = colore
-    if " - " in name:
-        left, right = name.split(" - ", 1)
+    # "Ricarica base PLA - Refill / Colore" o "Ricarica base PLA - Filament with spool / Colore"
+    if re.match(r'^Ricarica base PLA', name, re.I):
+        color_raw = re.sub(r'^.*?/\s*', '', name.split(' - ', 1)[-1]).strip()
+        is_refill = 'refill' in name.lower()
+        return "PLA", "Basic", color_raw, peso_g, is_refill
+
+    # "Bobina ... da Nkg - TIPO / Colore"  →  estrai TIPO dal lato destro
+    if re.match(r'^Bobina', name, re.I):
+        if ' - ' in name:
+            right = name.split(' - ', 1)[1].strip()
+            # right es: "Rapid PLA+ / Blue" oppure "PLA / White"
+            if '/' in right:
+                type_part, color_raw = right.split('/', 1)
+            else:
+                type_part, color_raw = right, ""
+            # Usa type_part come left per il mapping
+            left = type_part.strip()
+            color_raw = color_raw.strip()
+        else:
+            return None, "Standard", name, peso_g, False
     else:
-        return None, "Standard", name.strip(), peso_g
+        # Caso standard: "TIPO VARIANTE - Colore"
+        if ' - ' not in name:
+            return None, "Standard", name, peso_g, False
+        left, right = name.split(' - ', 1)
+        left = left.strip()
+        color_raw = right.strip()
+        # Rimuovi prefisso tipo ripetuto nel colore (es. "PLA / Space Grey" → "Space Grey")
+        color_raw = re.sub(r'^[A-Z][A-Z0-9\+\-]+\s*/\s*', '', color_raw).strip()
 
-    # Colore: rimuovi eventuale prefisso tipo ripetuto (es. "PLA / Space Grey" → "Space Grey")
-    color_raw = right.strip()
-    color_raw = re.sub(r'^[A-Z][A-Z0-9\+\-]+\s*/\s*', '', color_raw)  # rimuovi "PLA+ / "
-    color_raw = color_raw.strip()
-
-    # Tipo e variante dal campo sinistro
-    left = left.strip()
-    # Rimuovi peso dal campo sinistro se presente ("Rapid PLA Plus da 5kg" → "Rapid PLA Plus")
+    # Rimuovi peso residuo dal campo tipo (es. "Rapid PLA Plus da 5kg" → "Rapid PLA Plus")
     left = re.sub(r'\s+da\s+\d+[\s,]*kg', '', left, flags=re.I).strip()
 
-    # Mapping nome → (tipo, variante)
-    ELEGOO_TYPE_MAP = {
-        r'^PLA\+?$':            ("PLA", "Basic"),
-        r'^PLA Pro':            ("PLA", "Pro"),
-        r'^PLA Plus|^PLA\+':   ("PLA", "Plus"),
-        r'^PLA Matte':         ("PLA", "Matte"),
-        r'^PLA Silk':          ("PLA", "Silk"),
-        r'^PLA Galaxy':        ("PLA", "Galaxy"),
-        r'^PLA HS|^HS PLA':    ("PLA", "HS"),
-        r'^Rapid PLA':         ("PLA", "Rapid"),
-        r'^PLA Sparkle':       ("PLA", "Sparkle"),
-        r'^PLA\b':             ("PLA", "Basic"),
-        r'^PETG-CF':           ("PETG-CF", "Standard"),
-        r'^Rapid PETG':        ("PETG", "Rapid"),
-        r'^PETG Pro':          ("PETG", "Pro"),
-        r'^PETG Plus|^PETG\+': ("PETG", "Plus"),
-        r'^PETG\b':            ("PETG", "Basic"),
-        r'^ABS\b':             ("ABS", "Standard"),
-        r'^ABS\+':             ("ABS", "Plus"),
-        r'^ASA\b':             ("ASA", "Standard"),
-        r'^TPU 95A':           ("TPU", "95A"),
-        r'^TPU\b':             ("TPU", "Standard"),
-        r'^PA12-CF':           ("PA-CF", "Standard"),
-        r'^PA-CF':             ("PA-CF", "Standard"),
-        r'^PA\b':              ("PA", "Standard"),
-        r'^PLA-CF':            ("PLA-CF", "Standard"),
-        r'^PC\b':              ("PC", "Standard"),
-        r'^PETG-ESD':          ("PETG", "ESD"),
-    }
-    type_nome, variant_nome = None, "Standard"
-    for pattern, (t, v) in ELEGOO_TYPE_MAP.items():
+    ELEGOO_TYPE_MAP = [
+        (r'^PLA\+?$',                 "PLA",     "Basic"),
+        (r'^PLA Pro',                 "PLA",     "Pro"),
+        (r'^Rapid PLA\+|^Rapid PLA Plus', "PLA", "Plus"),
+        (r'^Rapid PLA',               "PLA",     "Rapid"),
+        (r'^PLA Plus|^PLA\+',         "PLA",     "Plus"),
+        (r'^PLA Matte',               "PLA",     "Matte"),
+        (r'^PLA Silk',                "PLA",     "Silk"),
+        (r'^PLA Galaxy',              "PLA",     "Galaxy"),
+        (r'^PLA HS|^HS PLA',          "PLA",     "HS"),
+        (r'^PLA Sparkle',             "PLA",     "Sparkle"),
+        (r'^PLA-CF',                  "PLA-CF",  "Standard"),
+        (r'^PLA\b',                   "PLA",     "Basic"),
+        (r'^PETG-CF',                 "PETG-CF", "Standard"),
+        (r'^Rapid PETG',              "PETG",    "Rapid"),
+        (r'^PETG Pro',                "PETG",    "Pro"),
+        (r'^PETG Plus|^PETG\+',       "PETG",    "Plus"),
+        (r'^PETG-ESD',                "PETG",    "ESD"),
+        (r'^PETG\b',                  "PETG",    "Basic"),
+        (r'^ABS\+',                   "ABS",     "Plus"),
+        (r'^ABS\b',                   "ABS",     "Standard"),
+        (r'^ASA\b',                   "ASA",     "Standard"),
+        (r'^Rapid TPU 95A',           "TPU",     "Rapid 95A"),
+        (r'^TPU 95A',                 "TPU",     "95A"),
+        (r'^TPU\b',                   "TPU",     "Standard"),
+        (r'^PA12-CF|^PA-CF',          "PA-CF",   "Standard"),
+        (r'^PA\b',                    "PA",      "Standard"),
+        (r'^PC\b',                    "PC",      "Standard"),
+    ]
+    for pattern, t, v in ELEGOO_TYPE_MAP:
         if re.match(pattern, left, re.I):
-            type_nome = t
-            variant_nome = v
-            break
+            return t, v, color_raw, peso_g, False
 
-    return type_nome, variant_nome, color_raw, peso_g
+    return None, "Standard", color_raw, peso_g, False
 
 
 def scrape_elegoo_impact(db: DB):
@@ -1662,13 +1670,11 @@ def scrape_elegoo_impact(db: DB):
             except ValueError:
                 pass
 
-        type_nome, variant_nome, color_raw, peso_g = _parse_elegoo_impact_name(name)
+        type_nome, variant_nome, color_raw, peso_g, is_refill = _parse_elegoo_impact_name(name)
         if not type_nome:
             log.debug(f"  Skip tipo non rilevato: {name!r}")
             skipped += 1
             continue
-
-        is_refill = "refill" in name.lower() or "no spool" in name.lower()
         colore, colore_hex, colore_famiglia = detect_color(color_raw)
 
         type_id = db.get_or_create_type(type_nome)
