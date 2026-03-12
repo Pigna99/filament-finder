@@ -174,22 +174,27 @@ export async function getFilamentoBySlug(slug: string): Promise<FilamentoRow | n
 // getPrezziShop — prezzi correnti per negozio per un filamento
 // ----------------------------------------------------------------
 export async function getPrezziShop(id_filament: number): Promise<PrezzoShop[]> {
+  // DISTINCT ON (s.nome) deduplica shop con lo stesso nome (es. Elegoo Store + Elegoo IT (Impact))
+  // mantenendo il prezzo più basso disponibile per ciascun nome.
   return sql<PrezzoShop[]>`
-    SELECT
-      vpl.*,
-      s.nome  AS shop,
-      s.paese,
-      ss.costo            AS shipping_costo,
-      ss.soglia_gratis    AS shipping_soglia_gratis,
-      ss.corriere         AS shipping_corriere,
-      ss.giorni_min       AS shipping_giorni_min,
-      ss.giorni_max       AS shipping_giorni_max,
-      ss.note             AS shipping_note
-    FROM v_price_latest vpl
-    JOIN shop s ON s.id = vpl.id_shop
-    LEFT JOIN shop_shipping ss ON ss.id_shop = s.id
-    WHERE vpl.id_filament = ${id_filament}
-    ORDER BY vpl.disponibile DESC, vpl.prezzo_finale ASC
+    SELECT * FROM (
+      SELECT DISTINCT ON (s.nome)
+        vpl.*,
+        s.nome  AS shop,
+        s.paese,
+        ss.costo            AS shipping_costo,
+        ss.soglia_gratis    AS shipping_soglia_gratis,
+        ss.corriere         AS shipping_corriere,
+        ss.giorni_min       AS shipping_giorni_min,
+        ss.giorni_max       AS shipping_giorni_max,
+        ss.note             AS shipping_note
+      FROM v_price_latest vpl
+      JOIN shop s ON s.id = vpl.id_shop
+      LEFT JOIN shop_shipping ss ON ss.id_shop = s.id
+      WHERE vpl.id_filament = ${id_filament}
+      ORDER BY s.nome, vpl.disponibile DESC, vpl.prezzo_finale ASC
+    ) sub
+    ORDER BY sub.disponibile DESC, sub.prezzo_finale ASC
   `;
 }
 
