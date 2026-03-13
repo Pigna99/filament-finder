@@ -2206,6 +2206,37 @@ _BANNER_SKIP_KW = [
     "3d pen", "pen filament",
 ]
 
+# Parole chiave per escludere deal non relativi all'area EU/IT
+# Esclude AU (Australia), US/CA/JP stores, valuta USD-only, ecc.
+_DEAL_SKIP_KW = [
+    "elegoo au:",
+    " au:",
+    "au banner",
+    "us/ca",
+    "us/ca/uk/jp",
+    "us store",
+    "ca store",
+    "us only",
+    "available for elegoo us",
+]
+
+def _deal_is_eu(deal: dict) -> bool:
+    """Restituisce True se il deal è applicabile al mercato EU/IT."""
+    name = (deal.get("Name") or "").lower()
+    desc = (deal.get("Description") or "").lower()
+    combined = name + " " + desc
+
+    # Salta esplicitamente i deal non-EU
+    if any(kw in combined for kw in _DEAL_SKIP_KW):
+        return False
+
+    # Salta deal con valuta USD (preferisci EUR o senza valuta)
+    currency = (deal.get("DiscountCurrency") or "").upper()
+    if currency == "USD":
+        return False
+
+    return True
+
 
 def scrape_elegoo_promos(db: "DB"):
     """Aggiorna la tabella elegoo_promo con deals e banner attivi da Impact."""
@@ -2224,10 +2255,11 @@ def scrape_elegoo_promos(db: "DB"):
         r = session.get(url, params={"State": "ACTIVE", "PageSize": 100}, timeout=30)
         r.raise_for_status()
         deals = r.json().get("Deals", [])
-        log.info(f"  Deals attivi: {len(deals)}")
+        deals_eu = [d for d in deals if _deal_is_eu(d)]
+        log.info(f"  Deals attivi: {len(deals)} → EU/IT: {len(deals_eu)}")
 
         with db.cur() as c:
-            for d in deals:
+            for d in deals_eu:
                 deal_id = str(d.get("Id", ""))
                 if not deal_id:
                     continue
