@@ -150,7 +150,7 @@ export default async function OffertePage() {
             <h2 className="text-xl font-bold text-zinc-100 mb-5">Banner promozionali</h2>
             <div className="flex flex-col gap-4">
               {leaderboard.map((b) => (
-                b.tracking_link && b.banner_url ? (
+                b.tracking_link ? (
                   <a
                     key={b.id}
                     href={b.tracking_link}
@@ -161,7 +161,7 @@ export default async function OffertePage() {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={b.banner_url}
+                      src={`/api/banner/${b.id}`}
                       alt={b.nome ?? "Banner Elegoo"}
                       className="w-full h-auto"
                       loading="lazy"
@@ -179,7 +179,7 @@ export default async function OffertePage() {
             <h2 className="text-xl font-bold text-zinc-100 mb-5">Offerte in evidenza</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {rettangoli.map((b) => (
-                b.tracking_link && b.banner_url ? (
+                b.tracking_link ? (
                   <a
                     key={b.id}
                     href={b.tracking_link}
@@ -190,7 +190,7 @@ export default async function OffertePage() {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={b.banner_url}
+                      src={`/api/banner/${b.id}`}
                       alt={b.nome ?? "Banner Elegoo"}
                       className="w-full h-auto"
                       loading="lazy"
@@ -208,7 +208,7 @@ export default async function OffertePage() {
             <h2 className="text-xl font-bold text-zinc-100 mb-5">Altre promozioni</h2>
             <div className="flex flex-wrap gap-4">
               {grandi.map((b) => (
-                b.tracking_link && b.banner_url ? (
+                b.tracking_link ? (
                   <a
                     key={b.id}
                     href={b.tracking_link}
@@ -220,7 +220,7 @@ export default async function OffertePage() {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={b.banner_url}
+                      src={`/api/banner/${b.id}`}
                       alt={b.nome ?? "Banner Elegoo"}
                       className="w-full h-auto"
                       loading="lazy"

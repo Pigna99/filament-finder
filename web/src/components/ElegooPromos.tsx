@@ -83,7 +83,7 @@ export default function ElegooPromos({ deals, banners }: Props) {
       </div>
 
       {/* Banner hero */}
-      {heroBanner?.banner_url && heroBanner.tracking_link && (
+      {heroBanner?.tracking_link && (
         <a
           href={heroBanner.tracking_link}
           target="_blank"
@@ -92,7 +92,7 @@ export default function ElegooPromos({ deals, banners }: Props) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={heroBanner.banner_url}
+            src={`/api/banner/${heroBanner.id}`}
             alt={heroBanner.nome ?? "Offerta Elegoo"}
             className="w-full object-contain"
           />
