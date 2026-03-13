@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getCatalogo } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
+import { GUIDE } from "@/lib/guide";
 
 export const revalidate = 3600;
 
@@ -16,9 +17,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  const guideUrls = GUIDE.map((g) => ({
+    url: `${base}/guide/${g.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
   return [
-    { url: base, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-    { url: `${base}/catalogo`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: base, lastModified: new Date(), changeFrequency: "daily" as const, priority: 1 },
+    { url: `${base}/catalogo`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.9 },
+    { url: `${base}/guide`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.8 },
+    ...guideUrls,
     ...filamentiUrls,
   ];
 }

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -7,6 +8,18 @@ import { slugifyFilamento } from "@/lib/slugify";
 import { GUIDE } from "@/lib/guide";
 
 export const revalidate = 900;
+
+export const metadata: Metadata = {
+  title: "Filament Finder — Confronta i prezzi dei filamenti 3D",
+  description:
+    "Trova il miglior prezzo per i filamenti da stampa 3D. Confronta PLA, PETG, TPU, ABS e molti altri tra i principali shop italiani. Storico prezzi e filtri avanzati.",
+  openGraph: {
+    title: "Filament Finder — Confronta i prezzi dei filamenti 3D",
+    description:
+      "Trova il miglior prezzo per i filamenti da stampa 3D. Confronta PLA, PETG, TPU, ABS e molti altri tra i principali shop italiani.",
+    type: "website",
+  },
+};
 
 const TYPE_BADGE: Record<string, string> = {
   "PLA":     "bg-emerald-950/90 text-emerald-400 border border-emerald-800/50",
@@ -35,8 +48,31 @@ export default async function HomePage() {
   const [top, scontati, stats] = await Promise.all([
     getTopFilamenti(6).catch(() => []),
     getFilamentiScontati(6).catch(() => []),
-    getSiteStats().catch(() => ({ num_filamenti: 0, num_shop: 0 })),
+    getSiteStats().catch(() => ({ num_filamenti: 0, num_shop: 0, num_brand: 0 })),
   ]);
+
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Filament Finder",
+      url: base,
+      logo: `${base}/og-image.png`,
+      description: "Confronto prezzi filamenti 3D tra i principali shop italiani.",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Filament Finder",
+      url: base,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${base}/catalogo?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
 
   // Mostra 4 guide variegate: 2 materiali + 2 pratiche
   const GUIDE_HOMEPAGE = ["pla", "petg", "calibrazione", "inceppamento"];
@@ -46,6 +82,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <main>
 
@@ -112,11 +149,18 @@ export default async function HomePage() {
 
             {/* Stats bar */}
             {(stats.num_filamenti > 0 || stats.num_shop > 0) && (
-              <div className="inline-flex items-center gap-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl px-6 py-3 text-sm">
+              <div className="inline-flex items-center gap-6 bg-zinc-900/80 border border-zinc-800 rounded-2xl px-6 py-3 text-sm flex-wrap justify-center">
                 {stats.num_filamenti > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-emerald-400 font-bold text-base">{stats.num_filamenti}+</span>
                     <span className="text-zinc-500">filamenti</span>
+                  </div>
+                )}
+                <div className="w-px h-4 bg-zinc-700" />
+                {stats.num_brand > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-400 font-bold text-base">{stats.num_brand}</span>
+                    <span className="text-zinc-500">marche</span>
                   </div>
                 )}
                 <div className="w-px h-4 bg-zinc-700" />

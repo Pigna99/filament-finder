@@ -8,8 +8,8 @@ import { getCatalogo, getColoriFamiglie } from "@/lib/filamenti";
 export const revalidate = 900;
 
 export const metadata: Metadata = {
-  title: "Catalogo filamenti 3D",
-  description: "Tutti i filamenti per stampa 3D con confronto prezzi, filtri per tipo, brand, colore e diametro.",
+  title: "Catalogo filamenti 3D — Confronto prezzi PLA, PETG, TPU e altri",
+  description: "Tutti i filamenti per stampa 3D con confronto prezzi tra i principali shop italiani. Filtra per tipo (PLA, PETG, TPU, ABS), brand, colore, diametro e prezzo.",
 };
 
 export default async function CatalogoPage({
@@ -27,8 +27,29 @@ export default async function CatalogoPage({
   const tipi = [...new Set(filamenti.map((f) => f.tipo))].sort();
   const brands = [...new Set(filamenti.map((f) => f.brand))].sort();
 
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: base },
+        { "@type": "ListItem", position: 2, name: "Catalogo", item: `${base}/catalogo` },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "Catalogo filamenti 3D",
+      description: `${filamenti.length} filamenti da stampa 3D con confronto prezzi tra i principali shop italiani.`,
+      url: `${base}/catalogo`,
+      publisher: { "@type": "Organization", name: "Filament Finder", url: base },
+    },
+  ];
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         <div className="mb-8">

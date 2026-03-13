@@ -32,8 +32,34 @@ export default async function GuidaPage({ params }: Props) {
     ?.map((s) => GUIDE.find((x) => x.slug === s))
     .filter(Boolean) ?? [];
 
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: base },
+      { "@type": "ListItem", position: 2, name: "Guide", item: `${base}/guide` },
+      { "@type": "ListItem", position: 3, name: g.titolo, item: `${base}/guide/${slug}` },
+    ],
+  };
+  const articleLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: g.titolo,
+    description: g.intro.slice(0, 160),
+    url: `${base}/guide/${slug}`,
+    publisher: {
+      "@type": "Organization",
+      name: "Filament Finder",
+      url: base,
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `${base}/guide/${slug}` },
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <Header />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
 

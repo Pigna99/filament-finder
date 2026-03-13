@@ -268,15 +268,17 @@ export async function getFilamentiScontati(limit = 6): Promise<FilamentoScontato
 // ----------------------------------------------------------------
 // getSiteStats — statistiche homepage (filamenti, shop)
 // ----------------------------------------------------------------
-export async function getSiteStats(): Promise<{ num_filamenti: number; num_shop: number }> {
-  const rows = await sql<{ num_filamenti: string; num_shop: string }[]>`
+export async function getSiteStats(): Promise<{ num_filamenti: number; num_shop: number; num_brand: number }> {
+  const rows = await sql<{ num_filamenti: string; num_shop: string; num_brand: string }[]>`
     SELECT
       (SELECT COUNT(*) FROM filament WHERE attivo = TRUE)::text AS num_filamenti,
-      (SELECT COUNT(*) FROM shop    WHERE attivo = TRUE)::text AS num_shop
+      (SELECT COUNT(*) FROM shop    WHERE attivo = TRUE)::text AS num_shop,
+      (SELECT COUNT(*) FROM brand)::text                       AS num_brand
   `;
   return {
     num_filamenti: parseInt(rows[0]?.num_filamenti ?? "0"),
     num_shop: parseInt(rows[0]?.num_shop ?? "0"),
+    num_brand: parseInt(rows[0]?.num_brand ?? "0"),
   };
 }
 

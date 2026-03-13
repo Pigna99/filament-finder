@@ -23,9 +23,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const f = await getFilamentoBySlug(slug).catch(() => null);
   if (!f) return { title: "Filamento non trovato" };
+  const title = `${f.brand} ${f.tipo} ${f.variante}${f.colore ? ` ${f.colore}` : ""} ${f.peso_g}g`;
+  const description = `Confronta i prezzi di ${f.brand} ${f.tipo} ${f.variante} su tutti gli shop italiani. Storico prezzi, caratteristiche tecniche e compatibilità stampanti.`;
   return {
-    title: `${f.brand} ${f.tipo} ${f.variante} ${f.colore ?? ""} ${f.peso_g}g`,
-    description: `Confronta i prezzi di ${f.brand} ${f.tipo} ${f.variante} su tutti gli shop. Storico prezzi e caratteristiche tecniche.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      ...(f.link_immagine ? { images: [{ url: f.link_immagine }] } : {}),
+    },
   };
 }
 
@@ -67,6 +75,16 @@ export default async function FilamentoPage({ params }: Props) {
   }));
 
   const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: base },
+      { "@type": "ListItem", position: 2, name: "Catalogo", item: `${base}/catalogo` },
+      { "@type": "ListItem", position: 3, name: f.tipo, item: `${base}/catalogo?tipo=${f.tipo}` },
+      { "@type": "ListItem", position: 4, name: `${f.brand} ${f.variante}${f.colore ? ` ${f.colore}` : ""}`, item: `${base}/filamento/${slug}` },
+    ],
+  };
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -104,6 +122,7 @@ export default async function FilamentoPage({ params }: Props) {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
@@ -231,13 +250,14 @@ export default async function FilamentoPage({ params }: Props) {
                         href={p.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex items-center justify-between p-3 rounded-xl transition-all group ${
+                        className={`flex items-start gap-3 p-3 rounded-xl transition-all group ${
                           !disponibile ? "bg-zinc-800/20 border border-zinc-800/30 opacity-60 hover:opacity-80" :
                           isBest ? "bg-emerald-950/50 border border-emerald-800/50 hover:border-emerald-600/70" :
                           "bg-zinc-800/50 border border-transparent hover:border-zinc-700"
                         }`}
                       >
-                        <div>
+                        {/* Colonna sinistra — cresce ma non stringe il prezzo */}
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-sm font-medium ${disponibile ? "text-zinc-100" : "text-zinc-500"}`}>{p.shop}</span>
                             {isBest && <span className="text-xs bg-emerald-600 text-white px-1.5 rounded">migliore</span>}
@@ -248,7 +268,7 @@ export default async function FilamentoPage({ params }: Props) {
                             )}
                           </div>
                           {p.codice_sconto && disponibile && (
-                            <span className="text-xs text-amber-400">Coupon: {p.codice_sconto}</span>
+                            <p className="text-xs text-amber-400 mt-0.5">Coupon: {p.codice_sconto}</p>
                           )}
                           {(() => {
                             const hasSRule = p.shipping_costo != null;
@@ -260,43 +280,43 @@ export default async function FilamentoPage({ params }: Props) {
                               ? `${p.shipping_giorni_min}–${p.shipping_giorni_max}gg`
                               : null;
                             if (!disponibile) return null;
+                            const spedLabel = isFree || (!hasSRule && costo === 0)
+                              ? "Spedizione gratuita"
+                              : `+€${costo.toFixed(2)} sped.${soglia != null ? ` · gratis >€${soglia.toFixed(0)}` : ""}`;
+                            const extra = [p.shipping_corriere, giorni].filter(Boolean).join(" · ");
                             return (
-                              <div className="flex flex-col gap-0.5 mt-0.5">
-                                <span className={`text-xs ${isFree || costo === 0 ? "text-emerald-500" : "text-zinc-500"}`}>
-                                  {isFree || (!hasSRule && costo === 0)
-                                    ? "Spedizione gratuita"
-                                    : `+ €${costo.toFixed(2)} spedizione${soglia != null ? ` · gratis sopra €${soglia.toFixed(2)}` : ""}`}
-                                </span>
-                                {(p.shipping_corriere || giorni) && (
-                                  <span className="text-xs text-zinc-600">
-                                    {[p.shipping_corriere, giorni].filter(Boolean).join(" · ")}
-                                  </span>
-                                )}
+                              <div className="mt-0.5 space-y-0.5">
+                                <p className={`text-xs ${isFree || (!hasSRule && costo === 0) ? "text-emerald-500" : "text-zinc-500"}`}>
+                                  {spedLabel}
+                                  {extra && <span className="text-zinc-600 ml-1">· {extra}</span>}
+                                </p>
                                 {p.shipping_note && (
-                                  <span className="text-xs text-zinc-600 italic">{p.shipping_note}</span>
+                                  <p className="text-xs text-zinc-600 italic truncate">{p.shipping_note}</p>
                                 )}
                               </div>
                             );
                           })()}
                         </div>
-                        <div className="text-right">
+
+                        {/* Colonna destra — dimensione fissa, non comprimibile */}
+                        <div className="shrink-0 text-right">
                           {disponibile ? (
                             <>
                               {p.prezzo_scontato && (
                                 <div className="text-xs text-zinc-500 line-through">€ {Number(p.prezzo).toFixed(2)}</div>
                               )}
-                              <div className={`font-bold ${isBest ? "text-emerald-400" : "text-zinc-100"}`}>
-                                € {Number(p.prezzo_finale).toFixed(2)}
+                              <div className={`font-bold text-base ${isBest ? "text-emerald-400" : "text-zinc-100"}`}>
+                                €&nbsp;{Number(p.prezzo_finale).toFixed(2)}
                               </div>
                               {p.prezzo_per_kg && (
-                                <div className="text-xs text-zinc-500">€ {Number(p.prezzo_per_kg).toFixed(2)}/kg</div>
+                                <div className="text-xs text-zinc-500">{Number(p.prezzo_per_kg).toFixed(2)}/kg</div>
                               )}
                             </>
                           ) : (
-                            <div className="text-xs text-zinc-600 mb-1">ultimo: € {Number(p.prezzo_finale).toFixed(2)}</div>
+                            <div className="text-xs text-zinc-600">€ {Number(p.prezzo_finale).toFixed(2)}</div>
                           )}
                           <span className={`text-xs mt-1 inline-block group-hover:underline ${disponibile ? "text-emerald-400" : "text-zinc-600"}`}>
-                            {disponibile ? "Vai al prodotto →" : "Visita pagina →"}
+                            {disponibile ? "Vai →" : "Visita →"}
                           </span>
                         </div>
                       </a>

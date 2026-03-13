@@ -54,8 +54,20 @@ export default async function ConfrontaPage({ searchParams }: Props) {
     </tr>
   );
 
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: base },
+      { "@type": "ListItem", position: 2, name: "Catalogo", item: `${base}/catalogo` },
+      { "@type": "ListItem", position: 3, name: "Confronto filamenti", item: `${base}/confronta` },
+    ],
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <Header />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <nav className="text-xs text-zinc-500 mb-6">

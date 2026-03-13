@@ -21,8 +21,29 @@ const CARD_ACCENT: Record<string, string> = {
 };
 
 export default function GuidePage() {
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: base },
+        { "@type": "ListItem", position: 2, name: "Guide", item: `${base}/guide` },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "Guide alla Stampa 3D",
+      description: "Guide complete sui filamenti FDM: PLA, PETG, ABS, TPU, Nylon e consigli per scegliere e conservare i materiali.",
+      url: `${base}/guide`,
+      publisher: { "@type": "Organization", name: "Filament Finder", url: base },
+    },
+  ];
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
         {/* Hero */}
