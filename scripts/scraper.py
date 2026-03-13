@@ -2225,67 +2225,69 @@ def scrape_elegoo_promos(db: "DB"):
         deals = r.json().get("Deals", [])
         log.info(f"  Deals attivi: {len(deals)}")
 
-        for d in deals:
-            deal_id = str(d.get("Id", ""))
-            if not deal_id:
-                continue
-            seen_ids.add(deal_id)
+        with db.cur() as c:
+            for d in deals:
+                deal_id = str(d.get("Id", ""))
+                if not deal_id:
+                    continue
+                seen_ids.add(deal_id)
 
-            codice = d.get("DefaultPromoCode") or None
-            if codice == "/":
-                codice = None
+                codice = d.get("DefaultPromoCode") or None
+                if codice == "/":
+                    codice = None
 
-            sconto_tipo = d.get("DiscountType") or None
-            if sconto_tipo == "":
-                sconto_tipo = None
+                sconto_tipo = d.get("DiscountType") or None
+                if sconto_tipo == "":
+                    sconto_tipo = None
 
-            pct = d.get("DiscountPercent") or ""
-            amt = d.get("DiscountAmount") or ""
-            sconto_valore = None
-            if pct:
-                try:
-                    sconto_valore = float(pct)
-                except ValueError:
-                    pass
-            elif amt:
-                try:
-                    sconto_valore = float(amt)
-                except ValueError:
-                    pass
+                pct = d.get("DiscountPercent") or ""
+                amt = d.get("DiscountAmount") or ""
+                sconto_valore = None
+                if pct:
+                    try:
+                        sconto_valore = float(pct)
+                    except ValueError:
+                        pass
+                elif amt:
+                    try:
+                        sconto_valore = float(amt)
+                    except ValueError:
+                        pass
 
-            valuta = d.get("DiscountCurrency") or None
-            if valuta == "":
-                valuta = None
+                valuta = d.get("DiscountCurrency") or None
+                if valuta == "":
+                    valuta = None
 
-            prodotti_raw = d.get("Products", [])
-            prodotti_json = json.dumps(prodotti_raw, ensure_ascii=False) if prodotti_raw else None
+                prodotti_raw = d.get("Products", [])
+                prodotti_json = json.dumps(prodotti_raw, ensure_ascii=False) if prodotti_raw else None
 
-            start_raw = d.get("StartDate") or None
-            end_raw   = d.get("EndDate")   or None
+                start_raw = d.get("StartDate") or None
+                end_raw   = d.get("EndDate")   or None
 
-            db.conn.execute("""
-                INSERT INTO elegoo_promo
-                    (id, tipo, nome, descrizione, codice, sconto_tipo, sconto_valore,
-                     sconto_valuta, scope, prodotti, data_inizio, data_fine, attivo, aggiornato_at)
-                VALUES (%s, 'deal', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW())
-                ON CONFLICT (id) DO UPDATE SET
-                    nome         = EXCLUDED.nome,
-                    descrizione  = EXCLUDED.descrizione,
-                    codice       = EXCLUDED.codice,
-                    sconto_tipo  = EXCLUDED.sconto_tipo,
-                    sconto_valore= EXCLUDED.sconto_valore,
-                    sconto_valuta= EXCLUDED.sconto_valuta,
-                    scope        = EXCLUDED.scope,
-                    prodotti     = EXCLUDED.prodotti,
-                    data_inizio  = EXCLUDED.data_inizio,
-                    data_fine    = EXCLUDED.data_fine,
-                    attivo       = TRUE,
-                    aggiornato_at= NOW()
-            """, (deal_id, d.get("Name"), d.get("Description"), codice,
-                  sconto_tipo, sconto_valore, valuta,
-                  d.get("Scope") or None, prodotti_json,
-                  start_raw or None, end_raw or None))
-            upserted += 1
+                if not db.dry_run:
+                    c.execute("""
+                        INSERT INTO elegoo_promo
+                            (id, tipo, nome, descrizione, codice, sconto_tipo, sconto_valore,
+                             sconto_valuta, scope, prodotti, data_inizio, data_fine, attivo, aggiornato_at)
+                        VALUES (%s, 'deal', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW())
+                        ON CONFLICT (id) DO UPDATE SET
+                            nome         = EXCLUDED.nome,
+                            descrizione  = EXCLUDED.descrizione,
+                            codice       = EXCLUDED.codice,
+                            sconto_tipo  = EXCLUDED.sconto_tipo,
+                            sconto_valore= EXCLUDED.sconto_valore,
+                            sconto_valuta= EXCLUDED.sconto_valuta,
+                            scope        = EXCLUDED.scope,
+                            prodotti     = EXCLUDED.prodotti,
+                            data_inizio  = EXCLUDED.data_inizio,
+                            data_fine    = EXCLUDED.data_fine,
+                            attivo       = TRUE,
+                            aggiornato_at= NOW()
+                    """, (deal_id, d.get("Name"), d.get("Description"), codice,
+                          sconto_tipo, sconto_valore, valuta,
+                          d.get("Scope") or None, prodotti_json,
+                          start_raw or None, end_raw or None))
+                upserted += 1
 
     except Exception as e:
         log.error(f"  Errore fetch deals: {e}")
@@ -2308,43 +2310,46 @@ def scrape_elegoo_promos(db: "DB"):
         ]
         log.info(f"  Banner dopo filtro: {len(filtered)}")
 
-        for a in filtered:
-            ad_id = str(a.get("Id", ""))
-            if not ad_id:
-                continue
-            seen_ids.add(ad_id)
+        with db.cur() as c:
+            for a in filtered:
+                ad_id = str(a.get("Id", ""))
+                if not ad_id:
+                    continue
+                seen_ids.add(ad_id)
 
-            raw_url = a.get("CreativeUrl") or ""
-            banner_url = ("https:" + raw_url) if raw_url.startswith("//") else raw_url
+                raw_url = a.get("CreativeUrl") or ""
+                banner_url = ("https:" + raw_url) if raw_url.startswith("//") else raw_url
 
-            db.conn.execute("""
-                INSERT INTO elegoo_promo
-                    (id, tipo, nome, banner_url, tracking_link, larghezza, altezza,
-                     attivo, aggiornato_at)
-                VALUES (%s, 'banner', %s, %s, %s, %s, %s, TRUE, NOW())
-                ON CONFLICT (id) DO UPDATE SET
-                    nome          = EXCLUDED.nome,
-                    banner_url    = EXCLUDED.banner_url,
-                    tracking_link = EXCLUDED.tracking_link,
-                    larghezza     = EXCLUDED.larghezza,
-                    altezza       = EXCLUDED.altezza,
-                    attivo        = TRUE,
-                    aggiornato_at = NOW()
-            """, (ad_id, a.get("Name"), banner_url,
-                  a.get("TrackingLink") or None,
-                  a.get("Width") or None, a.get("Height") or None))
-            upserted += 1
+                if not db.dry_run:
+                    c.execute("""
+                        INSERT INTO elegoo_promo
+                            (id, tipo, nome, banner_url, tracking_link, larghezza, altezza,
+                             attivo, aggiornato_at)
+                        VALUES (%s, 'banner', %s, %s, %s, %s, %s, TRUE, NOW())
+                        ON CONFLICT (id) DO UPDATE SET
+                            nome          = EXCLUDED.nome,
+                            banner_url    = EXCLUDED.banner_url,
+                            tracking_link = EXCLUDED.tracking_link,
+                            larghezza     = EXCLUDED.larghezza,
+                            altezza       = EXCLUDED.altezza,
+                            attivo        = TRUE,
+                            aggiornato_at = NOW()
+                    """, (ad_id, a.get("Name"), banner_url,
+                          a.get("TrackingLink") or None,
+                          a.get("Width") or None, a.get("Height") or None))
+                upserted += 1
 
     except Exception as e:
         log.error(f"  Errore fetch banner: {e}")
 
     # ── Disattiva record non più presenti nell'API ────────────────
     if seen_ids and not db.dry_run:
-        placeholders = ",".join(["%s"] * len(seen_ids))
-        db.conn.execute(
-            f"UPDATE elegoo_promo SET attivo = FALSE, aggiornato_at = NOW() WHERE id NOT IN ({placeholders})",
-            list(seen_ids)
-        )
+        with db.cur() as c:
+            placeholders = ",".join(["%s"] * len(seen_ids))
+            c.execute(
+                f"UPDATE elegoo_promo SET attivo = FALSE, aggiornato_at = NOW() WHERE id NOT IN ({placeholders})",
+                list(seen_ids)
+            )
 
     if not db.dry_run:
         db.conn.commit()
