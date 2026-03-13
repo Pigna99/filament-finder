@@ -490,6 +490,8 @@ export async function getElegooPromos(): Promise<{ deals: ElegooPromo[]; banners
       banner_url, tracking_link, larghezza, altezza, data_fine
     FROM elegoo_promo
     WHERE attivo = TRUE
+      AND (data_fine IS NULL OR data_fine > NOW())
+      AND (data_inizio IS NULL OR data_inizio <= NOW())
     ORDER BY tipo, aggiornato_at DESC
   `;
   return {

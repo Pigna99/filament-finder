@@ -2206,9 +2206,9 @@ _BANNER_SKIP_KW = [
     "3d pen", "pen filament",
 ]
 
-# Parole chiave per escludere deal non relativi all'area EU/IT
-# Esclude AU (Australia), US/CA/JP stores, valuta USD-only, ecc.
+# Parole chiave per escludere deal non relativi all'area EU/IT o non inerenti ai filamenti
 _DEAL_SKIP_KW = [
+    # Area non-EU
     "elegoo au:",
     " au:",
     "au banner",
@@ -2218,19 +2218,28 @@ _DEAL_SKIP_KW = [
     "ca store",
     "us only",
     "available for elegoo us",
+    # Prodotti non-filamento (stampanti, accessori)
+    "orangestorm",
+    "centauri",
+    "neptune",
+    "saturn",
+    "phecda",
+    "laser",
+    "3d pen",
+    # Valuta USD nel nome
+    "usd",
 ]
 
 def _deal_is_eu(deal: dict) -> bool:
-    """Restituisce True se il deal è applicabile al mercato EU/IT."""
+    """Restituisce True se il deal è applicabile al mercato EU/IT e inerente ai filamenti."""
     name = (deal.get("Name") or "").lower()
     desc = (deal.get("Description") or "").lower()
     combined = name + " " + desc
 
-    # Salta esplicitamente i deal non-EU
     if any(kw in combined for kw in _DEAL_SKIP_KW):
         return False
 
-    # Salta deal con valuta USD (preferisci EUR o senza valuta)
+    # Salta deal con valuta esplicita USD
     currency = (deal.get("DiscountCurrency") or "").upper()
     if currency == "USD":
         return False
