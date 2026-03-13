@@ -7,9 +7,13 @@ import { getCatalogo, getColoriFamiglie } from "@/lib/filamenti";
 
 export const revalidate = 900;
 
+const _BASE = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+
 export const metadata: Metadata = {
   title: "Catalogo filamenti 3D — Confronto prezzi PLA, PETG, TPU e altri",
   description: "Tutti i filamenti per stampa 3D con confronto prezzi tra i principali shop italiani. Filtra per tipo (PLA, PETG, TPU, ABS), brand, colore, diametro e prezzo.",
+  alternates: { canonical: `${_BASE}/catalogo` },
+  openGraph: { url: `${_BASE}/catalogo` },
 };
 
 export default async function CatalogoPage({

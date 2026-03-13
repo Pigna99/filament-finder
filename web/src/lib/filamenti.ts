@@ -174,8 +174,8 @@ export async function getFilamentoBySlug(slug: string): Promise<FilamentoRow | n
 // getPrezziShop — prezzi correnti per negozio per un filamento
 // ----------------------------------------------------------------
 export async function getPrezziShop(id_filament: number): Promise<PrezzoShop[]> {
-  // DISTINCT ON (s.nome) deduplica shop con lo stesso nome (es. Elegoo Store + Elegoo IT (Impact))
-  // mantenendo il prezzo più basso disponibile per ciascun nome.
+  // Se esiste una riga "Elegoo IT" (Impact, con affiliazione) per questo filamento,
+  // sopprimiamo "Elegoo" (Shopify EU, senza affiliazione) per evitare duplicati.
   return sql<PrezzoShop[]>`
     SELECT * FROM (
       SELECT DISTINCT ON (s.nome)
@@ -192,6 +192,15 @@ export async function getPrezziShop(id_filament: number): Promise<PrezzoShop[]> 
       JOIN shop s ON s.id = vpl.id_shop
       LEFT JOIN shop_shipping ss ON ss.id_shop = s.id
       WHERE vpl.id_filament = ${id_filament}
+        AND NOT (
+          s.nome = 'Elegoo'
+          AND EXISTS (
+            SELECT 1 FROM v_price_latest vpl2
+            JOIN shop s2 ON s2.id = vpl2.id_shop
+            WHERE vpl2.id_filament = ${id_filament}
+              AND s2.nome = 'Elegoo IT'
+          )
+        )
       ORDER BY s.nome, vpl.disponibile DESC, vpl.prezzo_finale ASC
     ) sub
     ORDER BY sub.disponibile DESC, sub.prezzo_finale ASC
@@ -202,6 +211,7 @@ export async function getPrezziShop(id_filament: number): Promise<PrezzoShop[]> 
 // getStoricoPrezzi — storico prezzi per grafico
 // ----------------------------------------------------------------
 export async function getStoricoPrezzi(id_filament: number): Promise<PuntoStorico[]> {
+  // Stessa logica di getPrezziShop: se esiste "Elegoo IT" (Impact), sopprime "Elegoo" (Shopify EU)
   return sql<PuntoStorico[]>`
     SELECT
       rilevato_at,
@@ -209,8 +219,16 @@ export async function getStoricoPrezzi(id_filament: number): Promise<PuntoStoric
       prezzo_per_kg,
       shop,
       id_filament_shop
-    FROM v_price_history_full
+    FROM v_price_history_full vph
     WHERE id_filament = ${id_filament}
+      AND NOT (
+        vph.shop = 'Elegoo'
+        AND EXISTS (
+          SELECT 1 FROM v_price_history_full vph2
+          WHERE vph2.id_filament = ${id_filament}
+            AND vph2.shop = 'Elegoo IT'
+        )
+      )
     ORDER BY rilevato_at ASC
   `;
 }
@@ -391,4 +409,82 @@ export async function getFilamentiByIds(ids: number[]): Promise<FilamentoRow[]> 
     WHERE id = ANY(${ids}::int[])
     ORDER BY array_position(${ids}::int[], id)
   `;
+}
+
+// ----------------------------------------------------------------
+// getAllBrands — lista brand per generateStaticParams
+// ----------------------------------------------------------------
+export async function getAllBrands(): Promise<{ nome: string; slug: string }[]> {
+  const rows = await sql<{ nome: string }[]>`
+    SELECT DISTINCT brand AS nome FROM v_filament_full ORDER BY brand
+  `;
+  return rows.map(r => ({
+    nome: r.nome,
+    slug: r.nome.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+  }));
+}
+
+// ----------------------------------------------------------------
+// getAllTipi — lista tipi per generateStaticParams
+// ----------------------------------------------------------------
+export async function getAllTipi(): Promise<string[]> {
+  const rows = await sql<{ tipo: string }[]>`
+    SELECT DISTINCT tipo FROM v_filament_full ORDER BY tipo
+  `;
+  return rows.map(r => r.tipo);
+}
+
+// ----------------------------------------------------------------
+// getStoricoPrezziMulti — storico prezzi per più filamenti (pagina confronto)
+// ----------------------------------------------------------------
+export async function getStoricoPrezziMulti(ids: number[]): Promise<Record<number, PuntoStorico[]>> {
+  if (ids.length === 0) return {};
+  const rows = await sql<(PuntoStorico & { id_filament: number })[]>`
+    SELECT
+      id_filament, rilevato_at, prezzo_finale, prezzo_per_kg, shop, id_filament_shop
+    FROM v_price_history_full vph
+    WHERE id_filament = ANY(${ids}::int[])
+      AND NOT (
+        vph.shop = 'Elegoo'
+        AND EXISTS (
+          SELECT 1 FROM v_price_history_full vph2
+          WHERE vph2.id_filament = vph.id_filament AND vph2.shop = 'Elegoo IT'
+        )
+      )
+    ORDER BY id_filament, rilevato_at ASC
+  `;
+  const result: Record<number, PuntoStorico[]> = {};
+  for (const r of rows) {
+    if (!result[r.id_filament]) result[r.id_filament] = [];
+    result[r.id_filament].push(r);
+  }
+  return result;
+}
+
+// ----------------------------------------------------------------
+// getBrandStats — statistiche brand per pagina brand
+// ----------------------------------------------------------------
+export async function getBrandStats(brand: string): Promise<{
+  num_filamenti: number;
+  num_shop: number;
+  prezzo_min: number | null;
+  tipi: string[];
+} | null> {
+  const rows = await sql<{ num_filamenti: string; num_shop: string; prezzo_min: string | null; tipi: string }[]>`
+    SELECT
+      COUNT(*)::text                                    AS num_filamenti,
+      COUNT(DISTINCT CASE WHEN num_shop > 0 THEN 1 END)::text AS num_shop,
+      MIN(prezzo_min)::text                             AS prezzo_min,
+      array_agg(DISTINCT tipo ORDER BY tipo)::text      AS tipi
+    FROM v_filament_full
+    WHERE brand = ${brand}
+  `;
+  if (!rows[0]) return null;
+  const r = rows[0];
+  return {
+    num_filamenti: parseInt(r.num_filamenti ?? "0"),
+    num_shop: parseInt(r.num_shop ?? "0"),
+    prezzo_min: r.prezzo_min ? parseFloat(r.prezzo_min) : null,
+    tipi: r.tipi ? r.tipi.replace(/[{}"]/g, "").split(",").filter(Boolean) : [],
+  };
 }

@@ -4,10 +4,14 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { GUIDE } from "@/lib/guide";
 
+const _GUIDE_BASE = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+
 export const metadata: Metadata = {
   title: "Guide alla Stampa 3D — Filament Finder",
   description:
     "Guide complete sui filamenti FDM: PLA, PETG, ABS, TPU, Nylon e consigli per scegliere e conservare i materiali.",
+  alternates: { canonical: `${_GUIDE_BASE}/guide` },
+  openGraph: { url: `${_GUIDE_BASE}/guide` },
 };
 
 const CARD_ACCENT: Record<string, string> = {

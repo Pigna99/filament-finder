@@ -732,9 +732,19 @@ def scrape_elegoo(db: DB):
     products_raw = fetch_shopify_products(ELEGOO_EU, "filaments")
     log.info(f"Trovati {len(products_raw)} prodotti nella collection filaments")
 
+    # Keyword nel TITOLO prodotto che indicano resine, accessori, kit — da escludere
+    ELEGOO_PRODUCT_SKIP = [
+        "resin", "resina", "like resin",   # resine fotopolimerizzanti
+        "paint kit", "3d paint",           # kit verniciatura
+        "acf film",                        # pellicole FEP/nFEP
+        "nozzle", "spatola", "scraper",    # accessori
+        "3d pen",                          # penne 3D
+        "filament dryer", "essiccatore",   # essiccatori
+    ]
     filament_products = [p for p in products_raw if
-        detect_type(p.get("title","")) is not None or
-        detect_type(" ".join(p.get("tags",[]))) is not None]
+        (detect_type(p.get("title","")) is not None or
+         detect_type(" ".join(p.get("tags",[]))) is not None)
+        and not any(kw in p.get("title","").lower() for kw in ELEGOO_PRODUCT_SKIP)]
     log.info(f"Filtrati {len(filament_products)} filamenti da processare")
 
     # Salta varianti RFID (stesso filamento ma con chip NFC/RFID — prezzo più alto, stesso articolo)

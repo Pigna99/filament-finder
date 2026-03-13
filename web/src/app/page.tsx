@@ -9,15 +9,19 @@ import { GUIDE } from "@/lib/guide";
 
 export const revalidate = 900;
 
+const SITE_URL = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+
 export const metadata: Metadata = {
   title: "Filament Finder — Confronta i prezzi dei filamenti 3D",
   description:
     "Trova il miglior prezzo per i filamenti da stampa 3D. Confronta PLA, PETG, TPU, ABS e molti altri tra i principali shop italiani. Storico prezzi e filtri avanzati.",
+  alternates: { canonical: SITE_URL },
   openGraph: {
     title: "Filament Finder — Confronta i prezzi dei filamenti 3D",
     description:
       "Trova il miglior prezzo per i filamenti da stampa 3D. Confronta PLA, PETG, TPU, ABS e molti altri tra i principali shop italiani.",
     type: "website",
+    url: SITE_URL,
   },
 };
 

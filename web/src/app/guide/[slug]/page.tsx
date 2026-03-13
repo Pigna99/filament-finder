@@ -17,9 +17,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const g = getGuida(slug);
   if (!g) return { title: "Guida non trovata" };
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const canonical = `${base}/guide/${slug}`;
   return {
     title: `${g.titolo} — Guida Filament Finder`,
     description: g.intro.slice(0, 160),
+    alternates: { canonical },
+    openGraph: { url: canonical },
   };
 }
 

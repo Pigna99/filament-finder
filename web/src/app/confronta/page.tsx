@@ -3,13 +3,26 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getFilamentiByIds, getPrezziShop, type FilamentoRow, type PrezzoShop } from "@/lib/filamenti";
+import { getFilamentiByIds, getPrezziShop, getStoricoPrezziMulti, type FilamentoRow, type PrezzoShop } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
+import PriceChart from "@/components/PriceChart";
 
-export const metadata: Metadata = {
-  title: "Confronto filamenti",
-  description: "Confronta fianco a fianco le caratteristiche e i prezzi di più filamenti 3D.",
-};
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ids?: string }> }): Promise<Metadata> {
+  const { ids: rawIds } = await searchParams;
+  const ids = (rawIds ?? "").split(",").map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0).slice(0, 4);
+  if (ids.length < 2) return { title: "Confronto filamenti" };
+  const filamenti = await getFilamentiByIds(ids).catch(() => []);
+  if (filamenti.length < 2) return { title: "Confronto filamenti" };
+  const names = filamenti.map(f => `${f.brand} ${f.variante}`).join(" vs ");
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
+  const canonical = `${base}/confronta?ids=${ids.join(",")}`;
+  return {
+    title: `${names} — Confronto Filament Finder`,
+    description: `Confronto prezzi e caratteristiche: ${names}. Scopri quale filamento offre il miglior rapporto qualità/prezzo.`,
+    alternates: { canonical },
+    openGraph: { url: canonical },
+  };
+}
 
 interface Props {
   searchParams: Promise<{ ids?: string }>;
@@ -39,9 +52,10 @@ export default async function ConfrontaPage({ searchParams }: Props) {
   const filamenti = await getFilamentiByIds(ids);
   if (filamenti.length < 2) notFound();
 
-  const prezziPerFilamento: PrezzoShop[][] = await Promise.all(
-    filamenti.map((f) => getPrezziShop(f.id).catch(() => []))
-  );
+  const [prezziPerFilamento, storicoMap] = await Promise.all([
+    Promise.all(filamenti.map((f) => getPrezziShop(f.id).catch(() => []))),
+    getStoricoPrezziMulti(ids).catch(() => ({} as Record<number, import("@/lib/filamenti").PuntoStorico[]>)),
+  ]);
 
   const col = `w-1/${filamenti.length === 2 ? "2" : filamenti.length === 3 ? "3" : "4"}`;
 
@@ -171,6 +185,31 @@ export default async function ConfrontaPage({ searchParams }: Props) {
               <Row label="Igroscopico"  render={(f) => <BoolVal v={f.igroscopico} />} />
               <Row label="Enclosure"    render={(f) => <BoolVal v={f.richiede_enclosure} />} />
               <Row label="Food safe"    render={(f) => <BoolVal v={f.food_safe} />} />
+
+              {/* Storico prezzi */}
+              <tr className="bg-zinc-900/50 border-b border-zinc-800">
+                <td className="px-4 py-2 text-xs text-zinc-600 uppercase tracking-wider" colSpan={filamenti.length + 1}>
+                  Storico prezzi
+                </td>
+              </tr>
+              <tr className="border-b border-zinc-800/50">
+                <td className="px-4 py-3 text-zinc-500 text-sm font-medium whitespace-nowrap w-36">Andamento</td>
+                {filamenti.map((f) => {
+                  const storico = (storicoMap[f.id] ?? []).map((p) => ({
+                    ...p,
+                    rilevato_at: p.rilevato_at instanceof Date ? p.rilevato_at.toISOString() : String(p.rilevato_at),
+                  }));
+                  return (
+                    <td key={f.id} className={`px-4 py-3 ${col}`}>
+                      {storico.length > 0 ? (
+                        <PriceChart data={storico} height={120} />
+                      ) : (
+                        <span className="text-zinc-600 text-xs">Nessun dato</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
 
               {/* Link shop */}
               <tr className="bg-zinc-900/50 border-b border-zinc-800">

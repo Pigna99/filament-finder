@@ -23,15 +23,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const f = await getFilamentoBySlug(slug).catch(() => null);
   if (!f) return { title: "Filamento non trovato" };
+  const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
   const title = `${f.brand} ${f.tipo} ${f.variante}${f.colore ? ` ${f.colore}` : ""} ${f.peso_g}g`;
   const description = `Confronta i prezzi di ${f.brand} ${f.tipo} ${f.variante} su tutti gli shop italiani. Storico prezzi, caratteristiche tecniche e compatibilità stampanti.`;
+  const canonical = `${base}/filamento/${slug}`;
   return {
     title,
     description,
+    alternates: { canonical },
     openGraph: {
       title,
       description,
       type: "website",
+      url: canonical,
       ...(f.link_immagine ? { images: [{ url: f.link_immagine }] } : {}),
     },
   };
