@@ -1,27 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import type { ElegooPromo } from "@/lib/filamenti";
+import CopyCodeButton from "@/components/CopyCodeButton";
 
 interface Props {
   deals: ElegooPromo[];
   banners: ElegooPromo[];
-}
-
-function CopyButton({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={() => {
-        navigator.clipboard.writeText(code).catch(() => {});
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }}
-      className="ml-2 text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-200 px-2 py-0.5 rounded transition-colors"
-    >
-      {copied ? "Copiato!" : "Copia"}
-    </button>
-  );
 }
 
 function DealCard({ deal }: { deal: ElegooPromo }) {
@@ -51,21 +36,26 @@ function DealCard({ deal }: { deal: ElegooPromo }) {
       )}
 
       {/* Codice promo */}
-      {hasCode && (
-        <div className="flex items-center mt-1">
-          <span className="font-mono text-sm font-bold text-emerald-400 bg-zinc-800 px-3 py-1 rounded-lg border border-zinc-700">
-            {deal.codice}
-          </span>
-          <CopyButton code={deal.codice!} />
-        </div>
-      )}
+      {hasCode && <CopyCodeButton code={deal.codice!} />}
 
-      {/* Scadenza */}
-      {deal.data_fine && (
-        <p className="text-xs text-zinc-600">
-          Scade: {new Date(deal.data_fine).toLocaleDateString("it-IT")}
-        </p>
-      )}
+      {/* Link + scadenza */}
+      <div className="flex items-center gap-2 flex-wrap mt-auto">
+        {deal.data_fine && (
+          <p className="text-xs text-zinc-600">
+            Scade: {new Date(deal.data_fine).toLocaleDateString("it-IT")}
+          </p>
+        )}
+        {deal.tracking_link && (
+          <a
+            href={deal.tracking_link}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            className="ml-auto text-xs text-emerald-400 hover:underline font-medium"
+          >
+            Vai all&apos;offerta →
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -85,9 +75,12 @@ export default function ElegooPromos({ deals, banners }: Props) {
 
   return (
     <section>
-      <h2 className="text-xl font-bold text-zinc-100 mb-4">
-        Offerte &amp; Coupon Elegoo
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-zinc-100">Offerte &amp; Coupon Elegoo</h2>
+        <Link href="/offerte" className="text-sm text-emerald-400 hover:underline">
+          Vedi tutti i banner →
+        </Link>
+      </div>
 
       {/* Banner hero */}
       {heroBanner?.banner_url && heroBanner.tracking_link && (

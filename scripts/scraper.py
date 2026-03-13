@@ -2196,7 +2196,8 @@ def scrape_amazon(db: DB):
 
 # ── Scraper Elegoo Promos (Impact API — deals, banner, codici sconto) ─────────
 
-IMPACT_CAMPAIGN_ID = "19663"
+IMPACT_CAMPAIGN_ID       = "19663"
+IMPACT_CAMPAIGN_TRACKING = "https://elegoo.sjv.io/c/7008452/1692726/19663"
 
 # Parole chiave per escludere banner non inerenti ai filamenti
 _BANNER_SKIP_KW = [
@@ -2268,24 +2269,27 @@ def scrape_elegoo_promos(db: "DB"):
                     c.execute("""
                         INSERT INTO elegoo_promo
                             (id, tipo, nome, descrizione, codice, sconto_tipo, sconto_valore,
-                             sconto_valuta, scope, prodotti, data_inizio, data_fine, attivo, aggiornato_at)
-                        VALUES (%s, 'deal', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW())
+                             sconto_valuta, scope, prodotti, tracking_link,
+                             data_inizio, data_fine, attivo, aggiornato_at)
+                        VALUES (%s, 'deal', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW())
                         ON CONFLICT (id) DO UPDATE SET
-                            nome         = EXCLUDED.nome,
-                            descrizione  = EXCLUDED.descrizione,
-                            codice       = EXCLUDED.codice,
-                            sconto_tipo  = EXCLUDED.sconto_tipo,
-                            sconto_valore= EXCLUDED.sconto_valore,
-                            sconto_valuta= EXCLUDED.sconto_valuta,
-                            scope        = EXCLUDED.scope,
-                            prodotti     = EXCLUDED.prodotti,
-                            data_inizio  = EXCLUDED.data_inizio,
-                            data_fine    = EXCLUDED.data_fine,
-                            attivo       = TRUE,
-                            aggiornato_at= NOW()
+                            nome          = EXCLUDED.nome,
+                            descrizione   = EXCLUDED.descrizione,
+                            codice        = EXCLUDED.codice,
+                            sconto_tipo   = EXCLUDED.sconto_tipo,
+                            sconto_valore = EXCLUDED.sconto_valore,
+                            sconto_valuta = EXCLUDED.sconto_valuta,
+                            scope         = EXCLUDED.scope,
+                            prodotti      = EXCLUDED.prodotti,
+                            tracking_link = EXCLUDED.tracking_link,
+                            data_inizio   = EXCLUDED.data_inizio,
+                            data_fine     = EXCLUDED.data_fine,
+                            attivo        = TRUE,
+                            aggiornato_at = NOW()
                     """, (deal_id, d.get("Name"), d.get("Description"), codice,
                           sconto_tipo, sconto_valore, valuta,
                           d.get("Scope") or None, prodotti_json,
+                          IMPACT_CAMPAIGN_TRACKING,
                           start_raw or None, end_raw or None))
                 upserted += 1
 

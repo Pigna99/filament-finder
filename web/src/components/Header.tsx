@@ -21,6 +21,7 @@ export default function Header() {
           <Link href="/catalogo?tipo=PETG" className="hover:text-zinc-100 transition-colors">PETG</Link>
           <Link href="/catalogo?tipo=TPU" className="hover:text-zinc-100 transition-colors">TPU</Link>
           <Link href="/guide" className="hover:text-zinc-100 transition-colors">Guide</Link>
+          <Link href="/offerte" className="hover:text-zinc-100 transition-colors text-emerald-400 hover:text-emerald-300">Offerte</Link>
         </nav>
 
         {/* Mobile hamburger */}
@@ -49,6 +50,7 @@ export default function Header() {
           <Link href="/catalogo?tipo=PETG" onClick={() => setOpen(false)} className="hover:text-zinc-100 transition-colors">PETG</Link>
           <Link href="/catalogo?tipo=TPU" onClick={() => setOpen(false)} className="hover:text-zinc-100 transition-colors">TPU</Link>
           <Link href="/guide" onClick={() => setOpen(false)} className="hover:text-zinc-100 transition-colors">Guide</Link>
+          <Link href="/offerte" onClick={() => setOpen(false)} className="hover:text-zinc-100 transition-colors text-emerald-400">Offerte</Link>
         </div>
       )}
     </header>
