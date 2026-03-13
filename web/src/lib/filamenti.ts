@@ -462,6 +462,43 @@ export async function getStoricoPrezziMulti(ids: number[]): Promise<Record<numbe
 }
 
 // ----------------------------------------------------------------
+// getElegooPromos — offerte, coupon e banner attivi da Impact
+// ----------------------------------------------------------------
+export interface ElegooPromo {
+  id: string;
+  tipo: "deal" | "banner";
+  nome: string | null;
+  descrizione: string | null;
+  codice: string | null;
+  sconto_tipo: string | null;
+  sconto_valore: number | null;
+  sconto_valuta: string | null;
+  scope: string | null;
+  prodotti: unknown;
+  banner_url: string | null;
+  tracking_link: string | null;
+  larghezza: number | null;
+  altezza: number | null;
+  data_fine: Date | null;
+}
+
+export async function getElegooPromos(): Promise<{ deals: ElegooPromo[]; banners: ElegooPromo[] }> {
+  const rows = await sql<ElegooPromo[]>`
+    SELECT
+      id, tipo, nome, descrizione, codice, sconto_tipo,
+      sconto_valore, sconto_valuta, scope, prodotti,
+      banner_url, tracking_link, larghezza, altezza, data_fine
+    FROM elegoo_promo
+    WHERE attivo = TRUE
+    ORDER BY tipo, aggiornato_at DESC
+  `;
+  return {
+    deals:   rows.filter(r => r.tipo === "deal"),
+    banners: rows.filter(r => r.tipo === "banner"),
+  };
+}
+
+// ----------------------------------------------------------------
 // getBrandStats — statistiche brand per pagina brand
 // ----------------------------------------------------------------
 export async function getBrandStats(brand: string): Promise<{

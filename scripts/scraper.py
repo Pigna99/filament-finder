@@ -2194,11 +2194,169 @@ def scrape_amazon(db: DB):
     log.info(f"Amazon IT: {total} varianti processate, {skipped} saltate")
 
 
+# ── Scraper Elegoo Promos (Impact API — deals, banner, codici sconto) ─────────
+
+IMPACT_CAMPAIGN_ID = "19663"
+
+# Parole chiave per escludere banner non inerenti ai filamenti
+_BANNER_SKIP_KW = [
+    "resin", "resina", "laser", "engraver", "incisore",
+    "neptune", "saturn", "centauri", "orangestorm", "phecda",
+    "3d pen", "pen filament",
+]
+
+
+def scrape_elegoo_promos(db: "DB"):
+    """Aggiorna la tabella elegoo_promo con deals e banner attivi da Impact."""
+    log.info("=== ELEGOO Promos (Impact API) ===")
+
+    session = requests.Session()
+    session.auth = (IMPACT_ACCOUNT_SID, IMPACT_AUTH_TOKEN)
+    session.headers.update({"Accept": "application/json"})
+
+    seen_ids: set[str] = set()
+    upserted = 0
+
+    # ── Deals ────────────────────────────────────────────────────
+    try:
+        url = f"{IMPACT_API_BASE}/Mediapartners/{IMPACT_ACCOUNT_SID}/Campaigns/{IMPACT_CAMPAIGN_ID}/Deals"
+        r = session.get(url, params={"State": "ACTIVE", "PageSize": 100}, timeout=30)
+        r.raise_for_status()
+        deals = r.json().get("Deals", [])
+        log.info(f"  Deals attivi: {len(deals)}")
+
+        for d in deals:
+            deal_id = str(d.get("Id", ""))
+            if not deal_id:
+                continue
+            seen_ids.add(deal_id)
+
+            codice = d.get("DefaultPromoCode") or None
+            if codice == "/":
+                codice = None
+
+            sconto_tipo = d.get("DiscountType") or None
+            if sconto_tipo == "":
+                sconto_tipo = None
+
+            pct = d.get("DiscountPercent") or ""
+            amt = d.get("DiscountAmount") or ""
+            sconto_valore = None
+            if pct:
+                try:
+                    sconto_valore = float(pct)
+                except ValueError:
+                    pass
+            elif amt:
+                try:
+                    sconto_valore = float(amt)
+                except ValueError:
+                    pass
+
+            valuta = d.get("DiscountCurrency") or None
+            if valuta == "":
+                valuta = None
+
+            prodotti_raw = d.get("Products", [])
+            prodotti_json = json.dumps(prodotti_raw, ensure_ascii=False) if prodotti_raw else None
+
+            start_raw = d.get("StartDate") or None
+            end_raw   = d.get("EndDate")   or None
+
+            db.conn.execute("""
+                INSERT INTO elegoo_promo
+                    (id, tipo, nome, descrizione, codice, sconto_tipo, sconto_valore,
+                     sconto_valuta, scope, prodotti, data_inizio, data_fine, attivo, aggiornato_at)
+                VALUES (%s, 'deal', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    nome         = EXCLUDED.nome,
+                    descrizione  = EXCLUDED.descrizione,
+                    codice       = EXCLUDED.codice,
+                    sconto_tipo  = EXCLUDED.sconto_tipo,
+                    sconto_valore= EXCLUDED.sconto_valore,
+                    sconto_valuta= EXCLUDED.sconto_valuta,
+                    scope        = EXCLUDED.scope,
+                    prodotti     = EXCLUDED.prodotti,
+                    data_inizio  = EXCLUDED.data_inizio,
+                    data_fine    = EXCLUDED.data_fine,
+                    attivo       = TRUE,
+                    aggiornato_at= NOW()
+            """, (deal_id, d.get("Name"), d.get("Description"), codice,
+                  sconto_tipo, sconto_valore, valuta,
+                  d.get("Scope") or None, prodotti_json,
+                  start_raw or None, end_raw or None))
+            upserted += 1
+
+    except Exception as e:
+        log.error(f"  Errore fetch deals: {e}")
+
+    # ── Banner ───────────────────────────────────────────────────
+    try:
+        url = f"{IMPACT_API_BASE}/Mediapartners/{IMPACT_ACCOUNT_SID}/Ads"
+        r = session.get(url, params={
+            "CampaignId": IMPACT_CAMPAIGN_ID,
+            "Type": "BANNER",
+            "PageSize": 200,
+        }, timeout=30)
+        r.raise_for_status()
+        ads = r.json().get("Ads", [])
+        log.info(f"  Banner totali: {len(ads)}")
+
+        filtered = [
+            a for a in ads
+            if not any(kw in (a.get("Name") or "").lower() for kw in _BANNER_SKIP_KW)
+        ]
+        log.info(f"  Banner dopo filtro: {len(filtered)}")
+
+        for a in filtered:
+            ad_id = str(a.get("Id", ""))
+            if not ad_id:
+                continue
+            seen_ids.add(ad_id)
+
+            raw_url = a.get("CreativeUrl") or ""
+            banner_url = ("https:" + raw_url) if raw_url.startswith("//") else raw_url
+
+            db.conn.execute("""
+                INSERT INTO elegoo_promo
+                    (id, tipo, nome, banner_url, tracking_link, larghezza, altezza,
+                     attivo, aggiornato_at)
+                VALUES (%s, 'banner', %s, %s, %s, %s, %s, TRUE, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    nome          = EXCLUDED.nome,
+                    banner_url    = EXCLUDED.banner_url,
+                    tracking_link = EXCLUDED.tracking_link,
+                    larghezza     = EXCLUDED.larghezza,
+                    altezza       = EXCLUDED.altezza,
+                    attivo        = TRUE,
+                    aggiornato_at = NOW()
+            """, (ad_id, a.get("Name"), banner_url,
+                  a.get("TrackingLink") or None,
+                  a.get("Width") or None, a.get("Height") or None))
+            upserted += 1
+
+    except Exception as e:
+        log.error(f"  Errore fetch banner: {e}")
+
+    # ── Disattiva record non più presenti nell'API ────────────────
+    if seen_ids and not db.dry_run:
+        placeholders = ",".join(["%s"] * len(seen_ids))
+        db.conn.execute(
+            f"UPDATE elegoo_promo SET attivo = FALSE, aggiornato_at = NOW() WHERE id NOT IN ({placeholders})",
+            list(seen_ids)
+        )
+
+    if not db.dry_run:
+        db.conn.commit()
+
+    log.info(f"  Promos upsertate: {upserted}")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Filament Finder Scraper")
-    parser.add_argument("--shop", choices=["elegoo", "elegoo-impact", "sunlu", "bambu", "esun", "3djake", "amazon", "prusament", "all"], default="all")
+    parser.add_argument("--shop", choices=["elegoo", "elegoo-impact", "sunlu", "bambu", "esun", "3djake", "amazon", "prusament", "promos", "all"], default="all")
     parser.add_argument("--dry-run", action="store_true", help="Non scrive nel DB")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -2241,6 +2399,9 @@ def main():
 
     if args.shop in ("amazon", "all"):
         scrape_amazon(db)
+
+    if args.shop in ("promos", "all"):
+        scrape_elegoo_promos(db)
 
     elapsed = (datetime.now() - start).total_seconds()
     log.info(f"=== Completato in {elapsed:.1f}s ===")

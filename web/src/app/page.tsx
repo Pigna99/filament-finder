@@ -3,7 +3,8 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FilamentoCard from "@/components/FilamentoCard";
-import { getTopFilamenti, getFilamentiScontati, getSiteStats } from "@/lib/filamenti";
+import { getTopFilamenti, getFilamentiScontati, getSiteStats, getElegooPromos } from "@/lib/filamenti";
+import ElegooPromos from "@/components/ElegooPromos";
 import { slugifyFilamento } from "@/lib/slugify";
 import { GUIDE } from "@/lib/guide";
 
@@ -49,10 +50,11 @@ const TYPE_INFO: { tipo: string; desc: string; emoji: string }[] = [
 ];
 
 export default async function HomePage() {
-  const [top, scontati, stats] = await Promise.all([
+  const [top, scontati, stats, promos] = await Promise.all([
     getTopFilamenti(6).catch(() => []),
     getFilamentiScontati(6).catch(() => []),
     getSiteStats().catch(() => ({ num_filamenti: 0, num_shop: 0, num_brand: 0 })),
+    getElegooPromos().catch(() => ({ deals: [], banners: [] })),
   ]);
 
   const base = process.env.SITE_URL ?? "https://filamenti.offerteai.it";
@@ -316,6 +318,11 @@ export default async function HomePage() {
               ))}
             </div>
           </section>
+
+          {/* ── Offerte & Coupon Elegoo ────────────────────────────── */}
+          {(promos.deals.length > 0 || promos.banners.length > 0) && (
+            <ElegooPromos deals={promos.deals} banners={promos.banners} />
+          )}
 
           {/* ── Esplora per tipo ───────────────────────────────────── */}
           <section>
