@@ -2199,11 +2199,18 @@ def scrape_amazon(db: DB):
 IMPACT_CAMPAIGN_ID       = "19663"
 IMPACT_CAMPAIGN_TRACKING = "https://elegoo.sjv.io/c/7008452/1692726/19663"
 
-# Parole chiave per escludere banner non inerenti ai filamenti
+# Parole chiave per escludere banner non inerenti ai filamenti o scaduti
 _BANNER_SKIP_KW = [
+    # Prodotti non-filamento
     "resin", "resina", "laser", "engraver", "incisore",
     "neptune", "saturn", "centauri", "orangestorm", "phecda",
     "3d pen", "pen filament",
+    # Campagne stagionali scadute
+    "black friday", "cyber monday",
+    # Lingue / aree non IT
+    "german", " au ", "au:", "au banner", "autumn sale",
+    # Logo / asset non promozionali
+    "elegoo logo",
 ]
 
 # Parole chiave per escludere deal non relativi all'area EU/IT o non inerenti ai filamenti
