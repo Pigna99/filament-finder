@@ -12,6 +12,7 @@ import {
   getVariantiModello,
   getCompatibiliPrinters,
 } from "@/lib/filamenti";
+import { tipoBadgeStyle } from "@/lib/tipo-style";
 
 export const revalidate = 900;
 
@@ -132,56 +133,65 @@ export default async function FilamentoPage({ params }: Props) {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
 
         {/* Breadcrumb */}
-        <nav className="text-xs text-zinc-500 mb-6">
-          <a href="/" className="hover:text-zinc-300">Home</a>
+        <nav className="text-xs mb-6" style={{ color: "var(--ink-4)" }} aria-label="breadcrumb">
+          <a href="/" className="transition-colors hover:[color:var(--ink-2)]">Home</a>
           <span className="mx-2">›</span>
-          <a href="/catalogo" className="hover:text-zinc-300">Catalogo</a>
+          <a href="/catalogo" className="transition-colors hover:[color:var(--ink-2)]">Catalogo</a>
           <span className="mx-2">›</span>
-          <a href={`/catalogo?tipo=${f.tipo}`} className="hover:text-zinc-300">{f.tipo}</a>
+          <a href={`/catalogo?tipo=${f.tipo}`} className="transition-colors hover:[color:var(--ink-2)]">{f.tipo}</a>
           <span className="mx-2">›</span>
-          <span className="text-zinc-300">{f.brand} {f.variante} {f.colore}</span>
+          <span style={{ color: "var(--ink-2)" }}>{f.brand} {f.variante} {f.colore}</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Colonna sinistra: info filamento */}
           <div className="lg:col-span-1">
             {/* Immagine / swatch */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex items-center justify-center h-48 mb-4">
+            <div
+              className="rounded-2xl p-6 flex items-center justify-center h-48 mb-4 border"
+              style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}
+            >
               {f.link_immagine ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={f.link_immagine} alt={`${f.brand} ${f.variante}`} className="max-h-36 object-contain" />
               ) : (
                 <div
-                  className="w-24 h-24 rounded-full border-4 border-zinc-700 shadow-inner"
-                  style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
+                  className="w-24 h-24 rounded-full"
+                  style={{
+                    backgroundColor: f.colore_hex ?? "var(--surface-3)",
+                    boxShadow: "inset 0 0 0 4px var(--surface-2), 0 0 0 1.5px var(--line-strong)",
+                  }}
                 />
               )}
             </div>
 
             {/* Badge tipo */}
             <div className="flex flex-wrap gap-2 mb-4">
-              <span className="bg-zinc-800 text-emerald-400 text-xs font-mono px-3 py-1 rounded-full">{f.tipo}</span>
-              <span className="bg-zinc-800 text-zinc-300 text-xs px-3 py-1 rounded-full">{f.variante}</span>
+              <span className="text-xs font-mono px-3 py-1 rounded-full border" style={tipoBadgeStyle(f.tipo)}>{f.tipo}</span>
+              <span className="text-xs px-3 py-1 rounded-full" style={{ backgroundColor: "var(--surface-2)", color: "var(--ink-2)" }}>{f.variante}</span>
               {f.is_refill && (
-                <span className="bg-amber-900/60 text-amber-300 border border-amber-700/50 text-xs px-3 py-1 rounded-full">
+                <span
+                  className="text-xs px-3 py-1 rounded-full border"
+                  style={{ color: "oklch(0.85 0.1 75)", backgroundColor: "oklch(0.3 0.05 75 / 0.6)", borderColor: "oklch(0.45 0.08 75 / 0.5)" }}
+                >
                   Refill — senza bobina
                 </span>
               )}
               {tags.map(t => (
-                <span key={t.id} className="bg-zinc-800 text-zinc-500 text-xs px-2 py-1 rounded-full" title={t.descrizione ?? ""}>
+                <span key={t.id} className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "var(--surface-2)", color: "var(--ink-4)" }} title={t.descrizione ?? ""}>
                   {t.nome}
                 </span>
               ))}
             </div>
 
             {/* Info base */}
-            <h1 className="text-xl font-bold text-zinc-100 mb-1">
+            <h1 className="text-xl font-bold mb-1">
               {f.brand} {f.tipo} {f.variante}
             </h1>
             {f.colore && (
               <div className="flex items-center gap-2 mb-2">
-                {f.colore_hex && <span className="w-4 h-4 rounded-full border border-zinc-700" style={{ backgroundColor: f.colore_hex }} />}
-                <span className="text-zinc-400">{f.colore}</span>
+                {f.colore_hex && <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: f.colore_hex, borderColor: "var(--line-strong)" }} />}
+                <span style={{ color: "var(--ink-3)" }}>{f.colore}</span>
               </div>
             )}
 
@@ -203,9 +213,9 @@ export default async function FilamentoPage({ params }: Props) {
                 ["Densità", f.densita_g_cm3 ? `${f.densita_g_cm3} g/cm³` : null],
                 ["Rating", f.rating_medio ? `${f.rating_medio}/5 (${f.num_recensioni} rec.)` : null],
               ].filter(([, v]) => v).map(([label, value]) => (
-                <div key={String(label)} className="flex justify-between">
-                  <span className="text-zinc-500">{label}</span>
-                  <span className="text-zinc-300">{value}</span>
+                <div key={String(label)} className="flex justify-between py-1 border-b" style={{ borderColor: "var(--line)" }}>
+                  <span style={{ color: "var(--ink-4)" }}>{label}</span>
+                  <span style={{ color: "var(--ink-2)" }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -215,9 +225,9 @@ export default async function FilamentoPage({ params }: Props) {
           <div className="lg:col-span-2 space-y-6">
 
             {/* Caratteristiche tecniche */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Caratteristiche tecniche</h2>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div className="rounded-2xl p-5 border" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+              <h2 className="text-base font-semibold mb-4">Caratteristiche tecniche</h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 {[
                   ["Temp. stampa", f.temp_stampa_min && f.temp_stampa_max ? `${f.temp_stampa_min}–${f.temp_stampa_max} °C` : "—"],
                   ["Temp. piatto", f.temp_piatto_min != null ? `${f.temp_piatto_min}–${f.temp_piatto_max} °C` : "—"],
@@ -229,20 +239,18 @@ export default async function FilamentoPage({ params }: Props) {
                   ["Humidity sensitive", f.humidity_sensitive ? "Sì" : "No"],
                 ].map(([label, value]) => (
                   <div key={String(label)}>
-                    <span className="text-zinc-500 text-xs">{label}</span>
-                    <p className="text-zinc-100">{value}</p>
+                    <span className="text-xs" style={{ color: "var(--ink-4)" }}>{label}</span>
+                    <p style={{ color: "var(--ink-1)" }}>{value}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Prezzi per shop */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">
-                Prezzi attuali per shop
-              </h2>
+            <div className="rounded-2xl p-5 border" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+              <h2 className="text-base font-semibold mb-4">Prezzi attuali per shop</h2>
               {prezziShopSerializable.length === 0 ? (
-                <p className="text-zinc-500 text-sm">Nessun prezzo disponibile.</p>
+                <p className="text-sm" style={{ color: "var(--ink-4)" }}>Nessun prezzo disponibile.</p>
               ) : (
                 <div className="space-y-3">
                   {prezziShopSerializable.map((p, i) => {
@@ -254,25 +262,28 @@ export default async function FilamentoPage({ params }: Props) {
                         href={p.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex items-start gap-3 p-3 rounded-xl transition-all group ${
-                          !disponibile ? "bg-zinc-800/20 border border-zinc-800/30 opacity-60 hover:opacity-80" :
-                          isBest ? "bg-emerald-950/50 border border-emerald-800/50 hover:border-emerald-600/70" :
-                          "bg-zinc-800/50 border border-transparent hover:border-zinc-700"
-                        }`}
+                        className="flex items-start gap-3 p-3 rounded-xl transition-colors group border"
+                        style={
+                          !disponibile
+                            ? { backgroundColor: "color-mix(in oklab, var(--surface-2) 40%, transparent)", borderColor: "var(--line)", opacity: 0.6 }
+                            : isBest
+                            ? { backgroundColor: "var(--good-quiet)", borderColor: "var(--good)" }
+                            : { backgroundColor: "var(--surface-2)", borderColor: "transparent" }
+                        }
                       >
                         {/* Colonna sinistra — cresce ma non stringe il prezzo */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-sm font-medium ${disponibile ? "text-zinc-100" : "text-zinc-500"}`}>{p.shop}</span>
-                            {isBest && <span className="text-xs bg-emerald-600 text-white px-1.5 rounded">migliore</span>}
-                            {!disponibile && <span className="text-xs bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">Non disponibile</span>}
-                            {p.paese && <span className="text-xs text-zinc-600">{p.paese}</span>}
+                            <span className="text-sm font-medium" style={{ color: disponibile ? "var(--ink-1)" : "var(--ink-4)" }}>{p.shop}</span>
+                            {isBest && <span className="text-xs px-1.5 rounded font-medium" style={{ backgroundColor: "var(--good)", color: "oklch(0.2 0.04 155)" }}>migliore</span>}
+                            {!disponibile && <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--surface-3)", color: "var(--ink-3)" }}>Non disponibile</span>}
+                            {p.paese && <span className="text-xs" style={{ color: "var(--ink-4)" }}>{p.paese}</span>}
                             {p.rilevato_at && (
-                              <span className="text-xs text-zinc-600">{timeAgo(p.rilevato_at as string)}</span>
+                              <span className="text-xs" style={{ color: "var(--ink-4)" }}>{timeAgo(p.rilevato_at as string)}</span>
                             )}
                           </div>
                           {p.codice_sconto && disponibile && (
-                            <p className="text-xs text-amber-400 mt-0.5">Coupon: {p.codice_sconto}</p>
+                            <p className="text-xs mt-0.5" style={{ color: "oklch(0.82 0.12 75)" }}>Coupon: {p.codice_sconto}</p>
                           )}
                           {(() => {
                             const hasSRule = p.shipping_costo != null;
@@ -290,12 +301,12 @@ export default async function FilamentoPage({ params }: Props) {
                             const extra = [p.shipping_corriere, giorni].filter(Boolean).join(" · ");
                             return (
                               <div className="mt-0.5 space-y-0.5">
-                                <p className={`text-xs ${isFree || (!hasSRule && costo === 0) ? "text-emerald-500" : "text-zinc-500"}`}>
+                                <p className="text-xs" style={{ color: isFree || (!hasSRule && costo === 0) ? "var(--good)" : "var(--ink-4)" }}>
                                   {spedLabel}
-                                  {extra && <span className="text-zinc-600 ml-1">· {extra}</span>}
+                                  {extra && <span className="ml-1" style={{ color: "var(--ink-4)" }}>· {extra}</span>}
                                 </p>
                                 {p.shipping_note && (
-                                  <p className="text-xs text-zinc-600 italic truncate">{p.shipping_note}</p>
+                                  <p className="text-xs italic truncate" style={{ color: "var(--ink-4)" }}>{p.shipping_note}</p>
                                 )}
                               </div>
                             );
@@ -307,19 +318,19 @@ export default async function FilamentoPage({ params }: Props) {
                           {disponibile ? (
                             <>
                               {p.prezzo_scontato && (
-                                <div className="text-xs text-zinc-500 line-through">€ {Number(p.prezzo).toFixed(2)}</div>
+                                <div className="text-xs line-through" style={{ color: "var(--ink-4)" }}>€ {Number(p.prezzo).toFixed(2)}</div>
                               )}
-                              <div className={`font-bold text-base ${isBest ? "text-emerald-400" : "text-zinc-100"}`}>
+                              <div className="font-bold text-base" style={{ color: isBest ? "var(--good)" : "var(--ink-1)" }}>
                                 €&nbsp;{Number(p.prezzo_finale).toFixed(2)}
                               </div>
                               {p.prezzo_per_kg && (
-                                <div className="text-xs text-zinc-500">{Number(p.prezzo_per_kg).toFixed(2)}/kg</div>
+                                <div className="text-xs" style={{ color: "var(--ink-4)" }}>{Number(p.prezzo_per_kg).toFixed(2)}/kg</div>
                               )}
                             </>
                           ) : (
-                            <div className="text-xs text-zinc-600">€ {Number(p.prezzo_finale).toFixed(2)}</div>
+                            <div className="text-xs" style={{ color: "var(--ink-4)" }}>€ {Number(p.prezzo_finale).toFixed(2)}</div>
                           )}
-                          <span className={`text-xs mt-1 inline-block group-hover:underline ${disponibile ? "text-emerald-400" : "text-zinc-600"}`}>
+                          <span className="text-xs mt-1 inline-block group-hover:underline" style={{ color: disponibile ? "var(--accent)" : "var(--ink-4)" }}>
                             {disponibile ? "Vai →" : "Visita →"}
                           </span>
                         </div>
@@ -332,34 +343,31 @@ export default async function FilamentoPage({ params }: Props) {
 
             {/* Grafico storico prezzi */}
             {storicoSerializable.length > 0 && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">
-                  Storico prezzi
-                </h2>
+              <div className="rounded-2xl p-5 border" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <h2 className="text-base font-semibold mb-4">Storico prezzi</h2>
                 <PriceChart data={storicoSerializable} height={200} />
               </div>
             )}
 
             {/* Stampanti compatibili */}
             {stampanti.length > 0 && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">
-                  Compatibilità stampanti
-                </h2>
+              <div className="rounded-2xl p-5 border" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <h2 className="text-base font-semibold mb-4">Compatibilità stampanti</h2>
                 <div className="flex flex-wrap gap-2">
                   {stampanti.map((p) => (
                     <div
                       key={p.id}
                       title={p.note ?? undefined}
-                      className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border ${
+                      className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border"
+                      style={
                         p.compatibile
-                          ? "bg-emerald-950/40 border-emerald-800/50 text-emerald-300"
-                          : "bg-zinc-800/40 border-zinc-700/50 text-zinc-500 line-through"
-                      }`}
+                          ? { backgroundColor: "var(--good-quiet)", borderColor: "var(--good)", color: "var(--good)" }
+                          : { backgroundColor: "var(--surface-2)", borderColor: "var(--line)", color: "var(--ink-4)", textDecoration: "line-through" }
+                      }
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.compatibile ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.compatibile ? "var(--good)" : "var(--ink-4)" }} />
                       {p.brand ? `${p.brand} ` : ""}{p.nome}
-                      <span className="text-zinc-600">⌀{p.diametro_mm}mm</span>
+                      <span style={{ color: "var(--ink-4)" }}>⌀{p.diametro_mm}mm</span>
                     </div>
                   ))}
                 </div>

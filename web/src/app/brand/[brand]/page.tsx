@@ -4,6 +4,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FilamentoCard from "@/components/FilamentoCard";
+import { tipoBadgeStyle } from "@/lib/tipo-style";
 import { getCatalogo, getAllBrands, getBrandStats } from "@/lib/filamenti";
 
 export const revalidate = 900;
@@ -69,20 +70,20 @@ export default async function BrandPage({ params }: Props) {
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         {/* Breadcrumb */}
-        <nav className="text-xs text-zinc-500 mb-6">
-          <Link href="/" className="hover:text-zinc-300">Home</Link>
+        <nav className="text-xs mb-6" style={{ color: "var(--ink-4)" }} aria-label="breadcrumb">
+          <Link href="/" className="transition-colors hover:[color:var(--ink-2)]">Home</Link>
           <span className="mx-2">›</span>
-          <Link href="/catalogo" className="hover:text-zinc-300">Catalogo</Link>
+          <Link href="/catalogo" className="transition-colors hover:[color:var(--ink-2)]">Catalogo</Link>
           <span className="mx-2">›</span>
-          <span className="text-zinc-300">{brandNome}</span>
+          <span style={{ color: "var(--ink-2)" }}>{brandNome}</span>
         </nav>
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-100 mb-2">
+          <h1 className="text-[length:var(--step-3)] font-bold mb-2">
             Filamenti {brandNome}
           </h1>
-          <p className="text-zinc-400 mb-4">
+          <p className="mb-4" style={{ color: "var(--ink-3)" }}>
             {filamenti.length} varianti disponibili
             {stats?.prezzo_min ? ` · da €${Number(stats.prezzo_min).toFixed(2)}` : ""}
           </p>
@@ -92,7 +93,8 @@ export default async function BrandPage({ params }: Props) {
               <Link
                 key={t}
                 href={`/catalogo?brand=${encodeURIComponent(brandNome)}&tipo=${t}`}
-                className="bg-zinc-800 hover:bg-zinc-700 text-emerald-400 text-xs font-mono px-3 py-1 rounded-full transition-colors"
+                className="text-xs font-mono px-3 py-1 rounded-full border transition-colors"
+                style={tipoBadgeStyle(t)}
               >
                 {t}
               </Link>
