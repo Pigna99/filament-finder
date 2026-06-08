@@ -21,18 +21,31 @@ export default function ConfróntoButton({ id }: Props) {
     return onCompareChange(sync);
   }, [sync]);
 
+  const label = active
+    ? "Rimuovi dal confronto"
+    : full
+    ? "Massimo 4 filamenti"
+    : "Aggiungi al confronto";
+
   return (
     <button
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCompare(id); }}
       disabled={full}
-      title={active ? "Rimuovi dal confronto" : full ? "Massimo 4 filamenti" : "Aggiungi al confronto"}
-      className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs border transition-all ${
+      aria-pressed={active}
+      aria-label={label}
+      title={label}
+      className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium border transition-colors disabled:cursor-not-allowed"
+      style={
         active
-          ? "bg-emerald-600 border-emerald-500 text-white"
+          ? { backgroundColor: "var(--accent)", borderColor: "var(--accent)", color: "var(--accent-ink)" }
           : full
-          ? "bg-zinc-800 border-zinc-700 text-zinc-600 cursor-not-allowed"
-          : "bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:border-emerald-600 hover:text-emerald-400 hover:bg-zinc-800"
-      }`}
+          ? { backgroundColor: "var(--surface-2)", borderColor: "var(--line)", color: "var(--ink-4)" }
+          : {
+              backgroundColor: "color-mix(in oklab, var(--surface-2) 85%, transparent)",
+              borderColor: "var(--line-strong)",
+              color: "var(--ink-3)",
+            }
+      }
     >
       {active ? "✓" : "+"}
     </button>

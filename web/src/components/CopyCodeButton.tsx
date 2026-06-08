@@ -6,7 +6,10 @@ export default function CopyCodeButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono text-sm font-bold text-emerald-400 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700 tracking-wider">
+      <span
+        className="font-mono text-sm font-bold px-3 py-1.5 rounded-lg border tracking-wider"
+        style={{ color: "var(--accent)", backgroundColor: "var(--surface-2)", borderColor: "var(--accent-line)" }}
+      >
         {code}
       </span>
       <button
@@ -15,7 +18,9 @@ export default function CopyCodeButton({ code }: { code: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         }}
-        className="text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-200 px-3 py-1.5 rounded-lg transition-colors font-medium"
+        aria-label={`Copia il codice ${code}`}
+        className="text-xs px-3 py-1.5 rounded-lg transition-colors font-medium border"
+        style={{ backgroundColor: "var(--surface-3)", color: "var(--ink-1)", borderColor: "var(--line-strong)" }}
       >
         {copied ? "✓ Copiato!" : "Copia"}
       </button>
