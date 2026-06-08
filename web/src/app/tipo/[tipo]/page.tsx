@@ -4,6 +4,8 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FilamentoCard from "@/components/FilamentoCard";
+import Icon from "@/components/Icon";
+import { tipoBadgeStyle } from "@/lib/tipo-style";
 import { getCatalogo, getAllTipi } from "@/lib/filamenti";
 
 export const revalidate = 900;
@@ -76,31 +78,32 @@ export default async function TipoPage({ params }: Props) {
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         {/* Breadcrumb */}
-        <nav className="text-xs text-zinc-500 mb-6">
-          <Link href="/" className="hover:text-zinc-300">Home</Link>
+        <nav className="text-xs mb-6" style={{ color: "var(--ink-4)" }} aria-label="breadcrumb">
+          <Link href="/" className="transition-colors hover:[color:var(--ink-2)]">Home</Link>
           <span className="mx-2">›</span>
-          <Link href="/catalogo" className="hover:text-zinc-300">Catalogo</Link>
+          <Link href="/catalogo" className="transition-colors hover:[color:var(--ink-2)]">Catalogo</Link>
           <span className="mx-2">›</span>
-          <span className="text-zinc-300">Filamenti {tipo}</span>
+          <span style={{ color: "var(--ink-2)" }}>Filamenti {tipo}</span>
         </nav>
 
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <span className="bg-zinc-800 text-emerald-400 text-sm font-mono font-bold px-3 py-1 rounded-full">{tipo}</span>
-            <h1 className="text-3xl font-bold text-zinc-100">Filamenti {tipo}</h1>
+            <span className="text-sm font-mono font-bold px-3 py-1 rounded-full border" style={tipoBadgeStyle(tipo)}>{tipo}</span>
+            <h1 className="text-[length:var(--step-3)] font-bold">Filamenti {tipo}</h1>
           </div>
           {TIPO_DESC[tipo] && (
-            <p className="text-zinc-400 mb-4 max-w-2xl">{TIPO_DESC[tipo]}</p>
+            <p className="mb-4 max-w-2xl" style={{ color: "var(--ink-3)" }}>{TIPO_DESC[tipo]}</p>
           )}
-          <p className="text-zinc-500 text-sm mb-4">{filamenti.length} varianti disponibili</p>
+          <p className="text-sm mb-4" style={{ color: "var(--ink-4)" }}>{filamenti.length} varianti disponibili</p>
           {/* Brand badge */}
           <div className="flex flex-wrap gap-2">
             {brands.map(b => (
               <Link
                 key={b}
                 href={`/catalogo?tipo=${tipo}&brand=${encodeURIComponent(b)}`}
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-3 py-1 rounded-full transition-colors"
+                className="text-xs px-3 py-1 rounded-full transition-colors"
+                style={{ backgroundColor: "var(--surface-2)", color: "var(--ink-2)" }}
               >
                 {b}
               </Link>
@@ -111,10 +114,11 @@ export default async function TipoPage({ params }: Props) {
         {/* Link guida se esiste */}
         <div className="mb-6">
           <Link
-            href={`/guide/${tipo.toLowerCase().replace("-cf", "").replace("nylon", "nylon")}`}
-            className="inline-flex items-center gap-2 text-sm text-emerald-400 hover:underline"
+            href={`/guide/${tipo.toLowerCase().replace("-cf", "")}`}
+            className="inline-flex items-center gap-2 text-sm hover:underline"
+            style={{ color: "var(--accent)" }}
           >
-            📖 Leggi la guida al {tipo} →
+            <Icon name="book" size={15} /> Leggi la guida al {tipo} →
           </Link>
         </div>
 

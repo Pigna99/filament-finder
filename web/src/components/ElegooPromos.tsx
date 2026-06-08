@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import type { ElegooPromo } from "@/lib/filamenti";
 import CopyCodeButton from "@/components/CopyCodeButton";
+import SectionHeader from "@/components/SectionHeader";
 
 interface Props {
   deals: ElegooPromo[];
@@ -15,24 +15,22 @@ function DealCard({ deal }: { deal: ElegooPromo }) {
   const hasAmt  = deal.sconto_tipo === "FIXED" && deal.sconto_valore;
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-2">
+    <div
+      className="rounded-2xl p-4 flex flex-col gap-2 border"
+      style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}
+    >
       {/* Badge sconto */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-zinc-200 font-medium leading-snug flex-1">{deal.nome}</p>
-        {hasPct && (
-          <span className="shrink-0 bg-emerald-900/60 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full">
-            -{deal.sconto_valore}%
-          </span>
-        )}
-        {hasAmt && (
-          <span className="shrink-0 bg-emerald-900/60 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full">
-            -{deal.sconto_valore} {deal.sconto_valuta}
+        <p className="text-sm font-medium leading-snug flex-1" style={{ color: "var(--ink-1)" }}>{deal.nome}</p>
+        {(hasPct || hasAmt) && (
+          <span className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "var(--good-quiet)", color: "var(--good)" }}>
+            -{deal.sconto_valore}{hasPct ? "%" : ` ${deal.sconto_valuta}`}
           </span>
         )}
       </div>
 
       {deal.descrizione && deal.descrizione !== deal.nome && (
-        <p className="text-xs text-zinc-500 leading-snug">{deal.descrizione}</p>
+        <p className="text-xs leading-snug" style={{ color: "var(--ink-3)" }}>{deal.descrizione}</p>
       )}
 
       {/* Codice promo */}
@@ -41,7 +39,7 @@ function DealCard({ deal }: { deal: ElegooPromo }) {
       {/* Link + scadenza */}
       <div className="flex items-center gap-2 flex-wrap mt-auto">
         {deal.data_fine && (
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs" style={{ color: "var(--ink-4)" }}>
             Scade: {new Date(deal.data_fine).toLocaleDateString("it-IT")}
           </p>
         )}
@@ -50,7 +48,8 @@ function DealCard({ deal }: { deal: ElegooPromo }) {
             href={deal.tracking_link}
             target="_blank"
             rel="noopener noreferrer sponsored"
-            className="ml-auto text-xs text-emerald-400 hover:underline font-medium"
+            className="ml-auto text-xs hover:underline font-medium"
+            style={{ color: "var(--accent)" }}
           >
             Vai all&apos;offerta →
           </a>
@@ -75,12 +74,7 @@ export default function ElegooPromos({ deals, banners }: Props) {
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-zinc-100">Offerte &amp; Coupon Elegoo</h2>
-        <Link href="/offerte" className="text-sm text-emerald-400 hover:underline">
-          Vedi tutti i banner →
-        </Link>
-      </div>
+      <SectionHeader icon="tag" title="Offerte & coupon Elegoo" href="/offerte" linkLabel="Vedi tutti i banner" />
 
       {/* Banner hero */}
       {heroBanner?.tracking_link && (
@@ -88,7 +82,8 @@ export default function ElegooPromos({ deals, banners }: Props) {
           href={heroBanner.tracking_link}
           target="_blank"
           rel="noopener noreferrer sponsored"
-          className="block mb-6 rounded-xl overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors"
+          className="block mb-6 rounded-xl overflow-hidden border transition-colors hover:[border-color:var(--line-strong)]"
+          style={{ borderColor: "var(--line)" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

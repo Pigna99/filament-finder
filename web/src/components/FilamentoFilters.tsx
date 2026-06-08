@@ -3,9 +3,10 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { FilamentoRow } from "@/lib/filamenti";
-import { slugifyFilamento } from "@/lib/slugify";
 import FilamentoCard from "./FilamentoCard";
 import FilamentoTable from "./FilamentoTable";
+import Icon from "./Icon";
+import { tipoPillStyle } from "@/lib/tipo-style";
 
 interface Props {
   filamenti: FilamentoRow[];
@@ -15,7 +16,7 @@ interface Props {
 }
 
 const sel =
-  "bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500";
+  "border text-sm rounded-lg px-3 py-1.5 [background-color:var(--surface-2)] [border-color:var(--line-strong)] [color:var(--ink-1)]";
 
 // Colore famiglia → hex rappresentativo
 const FAMIGLIA_HEX: Record<string, string> = {
@@ -34,21 +35,6 @@ const FAMIGLIA_HEX: Record<string, string> = {
 };
 
 type SortKey = "prezzo" | "brand" | "tipo" | "colore" | "peso" | "prezzo_min";
-
-const TYPE_PILL: Record<string, string> = {
-  "PLA":     "border-emerald-700/60 text-emerald-400 data-[active]:bg-emerald-900/50 data-[active]:border-emerald-600",
-  "PLA-CF":  "border-teal-700/60 text-teal-300 data-[active]:bg-teal-900/50 data-[active]:border-teal-600",
-  "PETG":    "border-blue-700/60 text-blue-400 data-[active]:bg-blue-900/50 data-[active]:border-blue-600",
-  "PETG-CF": "border-blue-700/60 text-blue-300 data-[active]:bg-blue-900/50 data-[active]:border-blue-600",
-  "ABS":     "border-orange-700/60 text-orange-400 data-[active]:bg-orange-900/50 data-[active]:border-orange-600",
-  "ASA":     "border-amber-700/60 text-amber-400 data-[active]:bg-amber-900/50 data-[active]:border-amber-600",
-  "TPU":     "border-purple-700/60 text-purple-400 data-[active]:bg-purple-900/50 data-[active]:border-purple-600",
-  "NYLON":   "border-cyan-700/60 text-cyan-400 data-[active]:bg-cyan-900/50 data-[active]:border-cyan-600",
-  "PA-CF":   "border-cyan-700/60 text-cyan-300 data-[active]:bg-cyan-900/50 data-[active]:border-cyan-600",
-  "PC":      "border-red-700/60 text-red-400 data-[active]:bg-red-900/50 data-[active]:border-red-600",
-  "HIPS":    "border-zinc-600/60 text-zinc-300 data-[active]:bg-zinc-800 data-[active]:border-zinc-500",
-  "PVA":     "border-pink-700/60 text-pink-400 data-[active]:bg-pink-900/50 data-[active]:border-pink-600",
-};
 
 export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: Props) {
   const router = useRouter();
@@ -193,56 +179,40 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
   return (
     <div>
       {/* Filtri — sticky */}
-      <div className="sticky top-14 z-40 bg-zinc-950/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-3 mb-2 border-b border-zinc-800/60">
+      <div
+        className="sticky top-16 z-40 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-3 mb-2 border-b"
+        style={{
+          backgroundColor: "color-mix(in oklab, var(--surface-0) 92%, transparent)",
+          borderColor: "var(--line)",
+        }}
+      >
 
         {/* Barra compatta mobile (sempre visibile) */}
         <div className="flex items-center gap-2 sm:hidden mb-2">
           <input
             type="text"
             placeholder="Cerca filamento..."
+            aria-label="Cerca filamento"
             value={localQ}
             onChange={(e) => setLocalQ(e.target.value)}
             className={`${sel} flex-1 min-w-0`}
           />
           <button
             onClick={() => setFiltersOpen((o) => !o)}
-            className={`flex items-center gap-1.5 shrink-0 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+            aria-expanded={filtersOpen}
+            className="flex items-center gap-1.5 shrink-0 text-sm px-3 py-1.5 rounded-lg border transition-colors"
+            style={
               filtersOpen || hasFilters
-                ? "bg-emerald-900/50 border-emerald-700 text-emerald-400"
-                : "bg-zinc-800 border-zinc-700 text-zinc-300"
-            }`}
+                ? { backgroundColor: "var(--accent-quiet)", borderColor: "var(--accent-line)", color: "var(--accent)" }
+                : { backgroundColor: "var(--surface-2)", borderColor: "var(--line-strong)", color: "var(--ink-2)" }
+            }
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 12h12M10 20h4" />
-            </svg>
+            <Icon name="sliders" size={16} />
             Filtri
-            {hasFilters && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            )}
+            {hasFilters && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--accent)" }} />}
           </button>
           {/* Toggle vista — mobile */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => setParam("view", "grid")}
-              title="Vista griglia"
-              className={`p-1.5 rounded-lg transition-colors ${view === "grid" ? "bg-emerald-600 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"}`}
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
-                <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
-              </svg>
-            </button>
-            <button
-              onClick={() => setParam("view", "table")}
-              title="Vista tabella"
-              className={`p-1.5 rounded-lg transition-colors ${view === "table" ? "bg-emerald-600 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"}`}
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                <rect x="1" y="1" width="14" height="3" rx="1"/><rect x="1" y="6" width="14" height="3" rx="1"/>
-                <rect x="1" y="11" width="14" height="3" rx="1"/>
-              </svg>
-            </button>
-          </div>
+          <ViewToggle view={view} setParam={setParam} />
         </div>
 
         {/* Pannello filtri completo — desktop sempre visibile, mobile collassabile */}
@@ -288,14 +258,16 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
                     key={c}
                     onClick={() => setParam("colore", isActive ? "" : c)}
                     title={c.charAt(0).toUpperCase() + c.slice(1)}
-                    className={`relative w-6 h-6 rounded-full border-2 transition-all ${
-                      isActive ? "border-emerald-400 scale-110" : "border-zinc-700 hover:border-zinc-400"
-                    }`}
-                    style={
-                      hex === "multicolor"
+                    aria-label={`Colore ${c}`}
+                    aria-pressed={isActive}
+                    className="relative w-6 h-6 rounded-full border-2 transition-transform hover:scale-105"
+                    style={{
+                      transform: isActive ? "scale(1.12)" : undefined,
+                      borderColor: isActive ? "var(--accent)" : "var(--line-strong)",
+                      ...(hex === "multicolor"
                         ? { background: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)" }
-                        : { backgroundColor: hex ?? "#808080" }
-                    }
+                        : { backgroundColor: hex ?? "#808080" }),
+                    }}
                   >
                     {hex === "#f0f0f0" || hex === "#ffdd00" || hex === "#e8f4f8" ? (
                       <span className="sr-only">{c}</span>
@@ -306,8 +278,10 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
               {famiglia && (
                 <button
                   onClick={() => setParam("colore", "")}
-                  className="text-xs text-zinc-500 hover:text-zinc-300 px-1 transition-colors"
+                  className="text-xs px-1 transition-colors"
+                  style={{ color: "var(--ink-4)" }}
                   title="Reset colore"
+                  aria-label="Reset colore"
                 >
                   ✕
                 </button>
@@ -316,6 +290,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
             <input
               type="number"
               placeholder="Max €/kg"
+              aria-label="Prezzo massimo per kg"
               value={prezzoMax}
               onChange={(e) => setParam("maxkg", e.target.value)}
               className={`${sel} w-28`}
@@ -323,6 +298,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
             <input
               type="number"
               placeholder="Max €"
+              aria-label="Prezzo massimo"
               value={prezzoEur}
               onChange={(e) => setParam("maxeur", e.target.value)}
               className={`${sel} w-24`}
@@ -330,33 +306,49 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
             {/* Toggle disponibile */}
             <button
               onClick={() => setParam("disponibile", disponibile === "1" ? "" : "1")}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+              aria-pressed={disponibile === "1"}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors"
+              style={
                 disponibile === "1"
-                  ? "bg-emerald-900/50 border-emerald-700 text-emerald-400"
-                  : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200"
-              }`}
+                  ? { backgroundColor: "var(--good-quiet)", borderColor: "var(--good)", color: "var(--good)" }
+                  : { backgroundColor: "var(--surface-2)", borderColor: "var(--line-strong)", color: "var(--ink-3)" }
+              }
             >
-              <span className={`w-2 h-2 rounded-full ${disponibile === "1" ? "bg-emerald-400" : "bg-zinc-600"}`} />
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: disponibile === "1" ? "var(--good)" : "var(--ink-4)" }}
+              />
               Disponibili
             </button>
             {/* Toggle refill */}
-            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1">
+            <div
+              className="flex items-center gap-1 border rounded-lg px-2 py-1"
+              style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--line-strong)" }}
+            >
               <button
                 onClick={() => setParam("refill", refill === "no" ? "" : "no")}
-                className={`text-xs px-2 py-0.5 rounded transition-colors ${refill === "no" ? "bg-zinc-600 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+                aria-pressed={refill === "no"}
+                className="text-xs px-2 py-0.5 rounded transition-colors"
+                style={refill === "no"
+                  ? { backgroundColor: "var(--surface-3)", color: "var(--ink-1)" }
+                  : { color: "var(--ink-4)" }}
               >
                 Con bobina
               </button>
               <button
                 onClick={() => setParam("refill", refill === "yes" ? "" : "yes")}
-                className={`text-xs px-2 py-0.5 rounded transition-colors ${refill === "yes" ? "bg-amber-700 text-amber-100" : "text-zinc-500 hover:text-zinc-300"}`}
+                aria-pressed={refill === "yes"}
+                className="text-xs px-2 py-0.5 rounded transition-colors"
+                style={refill === "yes"
+                  ? { backgroundColor: "oklch(0.4 0.08 75)", color: "oklch(0.92 0.06 75)" }
+                  : { color: "var(--ink-4)" }}
               >
                 Refill
               </button>
             </div>
 
             {view === "grid" && (
-              <select value={sortBy} onChange={(e) => setParam("sort", e.target.value)} className={sel}>
+              <select value={sortBy} onChange={(e) => setParam("sort", e.target.value)} aria-label="Ordina per" className={sel}>
                 <option value="prezzo">€/kg ↑</option>
                 <option value="prezzo_min">Prezzo ↑</option>
                 <option value="peso">Peso ↑</option>
@@ -368,34 +360,16 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
             {hasFilters && (
               <button
                 onClick={resetAll}
-                className="text-zinc-500 hover:text-zinc-300 text-sm px-2 transition-colors"
+                className="text-sm px-2 transition-colors"
+                style={{ color: "var(--ink-4)" }}
               >
                 ✕ Reset
               </button>
             )}
 
             {/* Toggle vista griglia / tabella — desktop */}
-            <div className="ml-auto hidden sm:flex items-center gap-1">
-              <button
-                onClick={() => setParam("view", "grid")}
-                title="Vista griglia"
-                className={`p-1.5 rounded-lg transition-colors ${view === "grid" ? "bg-emerald-600 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"}`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
-                  <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
-                </svg>
-              </button>
-              <button
-                onClick={() => setParam("view", "table")}
-                title="Vista tabella"
-                className={`p-1.5 rounded-lg transition-colors ${view === "table" ? "bg-emerald-600 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"}`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <rect x="1" y="1" width="14" height="3" rx="1"/><rect x="1" y="6" width="14" height="3" rx="1"/>
-                  <rect x="1" y="11" width="14" height="3" rx="1"/>
-                </svg>
-              </button>
+            <div className="ml-auto hidden sm:flex">
+              <ViewToggle view={view} setParam={setParam} />
             </div>
           </div>
 
@@ -404,7 +378,11 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
             <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none mt-2">
               <button
                 onClick={() => setParam("tipo", "")}
-                className={`shrink-0 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${!tipo ? "bg-zinc-700 border-zinc-500 text-zinc-100" : "border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500"}`}
+                aria-pressed={!tipo}
+                className="shrink-0 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors"
+                style={!tipo
+                  ? { backgroundColor: "var(--surface-3)", borderColor: "var(--line-strong)", color: "var(--ink-1)" }
+                  : { borderColor: "var(--line-strong)", color: "var(--ink-4)" }}
               >
                 Tutti
               </button>
@@ -412,8 +390,9 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
                 <button
                   key={t}
                   onClick={() => setParam("tipo", tipo === t ? "" : t)}
-                  data-active={tipo === t ? "" : undefined}
-                  className={`shrink-0 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${TYPE_PILL[t] ?? "border-zinc-700/60 text-zinc-400 data-[active]:bg-zinc-800 data-[active]:border-zinc-500"}`}
+                  aria-pressed={tipo === t}
+                  className="shrink-0 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors"
+                  style={tipoPillStyle(t, tipo === t)}
                 >
                   {t}
                 </button>
@@ -426,109 +405,40 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
       {/* Active filter chips */}
       {hasFilters && (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {q && (
-            <button
-              onClick={() => { setLocalQ(""); setParam("q", ""); }}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              &ldquo;{q}&rdquo; <span className="text-zinc-500">×</span>
-            </button>
-          )}
-          {tipo && (
-            <button
-              onClick={() => setParam("tipo", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              Tipo: {tipo} <span className="text-zinc-500">×</span>
-            </button>
-          )}
-          {brand && (
-            <button
-              onClick={() => setParam("brand", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              Brand: {brand} <span className="text-zinc-500">×</span>
-            </button>
-          )}
-          {diametro && (
-            <button
-              onClick={() => setParam("diametro", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              ⌀ {diametro}mm <span className="text-zinc-500">×</span>
-            </button>
-          )}
+          {q && <Chip onClear={() => { setLocalQ(""); setParam("q", ""); }}>&ldquo;{q}&rdquo;</Chip>}
+          {tipo && <Chip onClear={() => setParam("tipo", "")}>Tipo: {tipo}</Chip>}
+          {brand && <Chip onClear={() => setParam("brand", "")}>Brand: {brand}</Chip>}
+          {diametro && <Chip onClear={() => setParam("diametro", "")}>⌀ {diametro}mm</Chip>}
           {famiglia && (
-            <button
-              onClick={() => setParam("colore", "")}
-              className="flex items-center gap-1.5 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
+            <Chip onClear={() => setParam("colore", "")}>
               {FAMIGLIA_HEX[famiglia] && FAMIGLIA_HEX[famiglia] !== "multicolor" && (
                 <span
-                  className="w-3 h-3 rounded-full border border-zinc-600 inline-block shrink-0"
-                  style={{ backgroundColor: FAMIGLIA_HEX[famiglia] }}
+                  className="w-3 h-3 rounded-full border inline-block shrink-0"
+                  style={{ backgroundColor: FAMIGLIA_HEX[famiglia], borderColor: "var(--line-strong)" }}
                 />
               )}
-              {famiglia.charAt(0).toUpperCase() + famiglia.slice(1)} <span className="text-zinc-500">×</span>
-            </button>
+              {famiglia.charAt(0).toUpperCase() + famiglia.slice(1)}
+            </Chip>
           )}
-          {peso && (
-            <button
-              onClick={() => setParam("peso", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              {formatPeso(peso)} <span className="text-zinc-500">×</span>
-            </button>
-          )}
-          {prezzoMax && (
-            <button
-              onClick={() => setParam("maxkg", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              Max €{prezzoMax}/kg <span className="text-zinc-500">×</span>
-            </button>
-          )}
-          {prezzoEur && (
-            <button
-              onClick={() => setParam("maxeur", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              Max €{prezzoEur} <span className="text-zinc-500">×</span>
-            </button>
-          )}
+          {peso && <Chip onClear={() => setParam("peso", "")}>{formatPeso(peso)}</Chip>}
+          {prezzoMax && <Chip onClear={() => setParam("maxkg", "")}>Max €{prezzoMax}/kg</Chip>}
+          {prezzoEur && <Chip onClear={() => setParam("maxeur", "")}>Max €{prezzoEur}</Chip>}
           {disponibile === "1" && (
-            <button
-              onClick={() => setParam("disponibile", "")}
-              className="flex items-center gap-1.5 bg-emerald-900/50 text-emerald-300 text-xs px-2 py-1 rounded-full hover:bg-emerald-900 transition-colors"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Solo disponibili <span className="text-emerald-600">×</span>
-            </button>
+            <Chip onClear={() => setParam("disponibile", "")} tone="good">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--good)" }} />
+              Solo disponibili
+            </Chip>
           )}
-          {refill === "yes" && (
-            <button
-              onClick={() => setParam("refill", "")}
-              className="flex items-center gap-1 bg-amber-900/60 text-amber-300 text-xs px-2 py-1 rounded-full hover:bg-amber-900 transition-colors"
-            >
-              Solo Refill <span className="text-amber-600">×</span>
-            </button>
-          )}
-          {refill === "no" && (
-            <button
-              onClick={() => setParam("refill", "")}
-              className="flex items-center gap-1 bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded-full hover:bg-zinc-700 transition-colors"
-            >
-              Solo con bobina <span className="text-zinc-500">×</span>
-            </button>
-          )}
+          {refill === "yes" && <Chip onClear={() => setParam("refill", "")} tone="warn">Solo Refill</Chip>}
+          {refill === "no" && <Chip onClear={() => setParam("refill", "")}>Solo con bobina</Chip>}
         </div>
       )}
 
       {/* Conteggio + loading */}
-      <p className="text-sm text-zinc-500 mb-4 flex items-center gap-2">
+      <p className="text-sm mb-4 flex items-center gap-2" style={{ color: "var(--ink-3)" }} aria-live="polite">
         {loading ? (
           <>
-            <span className="inline-block w-3.5 h-3.5 border-2 border-zinc-600 border-t-emerald-400 rounded-full animate-spin" />
+            <Spinner size={14} />
             Caricamento…
           </>
         ) : (
@@ -537,7 +447,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
       </p>
 
       {!loading && filtered.length === 0 ? (
-        <div className="text-center py-16 text-zinc-500">
+        <div className="text-center py-16" style={{ color: "var(--ink-3)" }}>
           Nessun filamento corrisponde ai filtri selezionati.
         </div>
       ) : view === "grid" ? (
@@ -551,7 +461,7 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           {/* Sentinel: trigger per caricare altri item */}
           {displayCount < filtered.length && (
             <div ref={sentinelRef} className="flex justify-center items-center py-8 mt-2">
-              <span className="inline-block w-5 h-5 border-2 border-zinc-700 border-t-emerald-400 rounded-full animate-spin" />
+              <Spinner size={20} />
             </div>
           )}
         </>
@@ -561,6 +471,84 @@ export default function FilamentoFilters({ filamenti, tipi, brands, famiglie }: 
           <FilamentoTable filamenti={filtered} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Token-driven loading spinner. */
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <span
+      className="inline-block rounded-full animate-spin"
+      style={{
+        width: size,
+        height: size,
+        border: "2px solid var(--line-strong)",
+        borderTopColor: "var(--accent)",
+      }}
+    />
+  );
+}
+
+/** Active-filter chip with a clear affordance. */
+function Chip({
+  children,
+  onClear,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  onClear: () => void;
+  tone?: "neutral" | "good" | "warn";
+}) {
+  const styles: Record<string, React.CSSProperties> = {
+    neutral: { backgroundColor: "var(--surface-2)", color: "var(--ink-2)" },
+    good: { backgroundColor: "var(--good-quiet)", color: "var(--good)" },
+    warn: { backgroundColor: "oklch(0.34 0.07 75)", color: "oklch(0.88 0.07 75)" },
+  };
+  return (
+    <button
+      onClick={onClear}
+      className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
+      style={styles[tone]}
+      aria-label="Rimuovi filtro"
+    >
+      {children} <span style={{ opacity: 0.6 }}>×</span>
+    </button>
+  );
+}
+
+/** Grid / table view switch — shared by mobile and desktop bars. */
+function ViewToggle({
+  view,
+  setParam,
+}: {
+  view: "grid" | "table";
+  setParam: (key: string, value: string) => void;
+}) {
+  const btn = (active: boolean): React.CSSProperties =>
+    active
+      ? { backgroundColor: "var(--accent)", color: "var(--accent-ink)" }
+      : { color: "var(--ink-4)" };
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <button
+        onClick={() => setParam("view", "grid")}
+        aria-label="Vista griglia"
+        aria-pressed={view === "grid"}
+        className="grid place-items-center w-8 h-8 rounded-lg transition-colors"
+        style={btn(view === "grid")}
+      >
+        <Icon name="grid" size={16} />
+      </button>
+      <button
+        onClick={() => setParam("view", "table")}
+        aria-label="Vista tabella"
+        aria-pressed={view === "table"}
+        className="grid place-items-center w-8 h-8 rounded-lg transition-colors"
+        style={btn(view === "table")}
+      >
+        <Icon name="rows" size={16} />
+      </button>
     </div>
   );
 }

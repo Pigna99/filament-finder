@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getFilamentiByIds, getPrezziShop, getStoricoPrezziMulti, type FilamentoRow, type PrezzoShop } from "@/lib/filamenti";
+import { getFilamentiByIds, getPrezziShop, getStoricoPrezziMulti, type FilamentoRow } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
+import { tipoBadgeStyle } from "@/lib/tipo-style";
 import PriceChart from "@/components/PriceChart";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ids?: string }> }): Promise<Metadata> {
@@ -31,12 +32,12 @@ interface Props {
 const DIFFICOLTA_LABEL = ["", "Molto facile", "Facile", "Medio", "Difficile", "Molto difficile"];
 
 function Val({ v }: { v: React.ReactNode }) {
-  return <span className="text-zinc-100">{v ?? <span className="text-zinc-600">—</span>}</span>;
+  return <span style={{ color: "var(--ink-1)" }}>{v ?? <span style={{ color: "var(--ink-4)" }}>—</span>}</span>;
 }
 
 function BoolVal({ v }: { v: boolean | null | undefined }) {
-  if (v == null) return <span className="text-zinc-600">—</span>;
-  return <span className={v ? "text-emerald-400" : "text-zinc-500"}>{v ? "Sì" : "No"}</span>;
+  if (v == null) return <span style={{ color: "var(--ink-4)" }}>—</span>;
+  return <span style={{ color: v ? "var(--good)" : "var(--ink-3)" }}>{v ? "Sì" : "No"}</span>;
 }
 
 export default async function ConfrontaPage({ searchParams }: Props) {
@@ -60,8 +61,8 @@ export default async function ConfrontaPage({ searchParams }: Props) {
   const col = `w-1/${filamenti.length === 2 ? "2" : filamenti.length === 3 ? "3" : "4"}`;
 
   const Row = ({ label, render }: { label: string; render: (f: FilamentoRow, i: number) => React.ReactNode }) => (
-    <tr className="border-b border-zinc-800/50">
-      <td className="px-4 py-3 text-zinc-500 text-sm font-medium whitespace-nowrap w-36">{label}</td>
+    <tr className="border-b" style={{ borderColor: "var(--line)" }}>
+      <td className="px-4 py-3 text-sm font-medium whitespace-nowrap w-36" style={{ color: "var(--ink-4)" }}>{label}</td>
       {filamenti.map((f, i) => (
         <td key={f.id} className={`px-4 py-3 text-sm ${col}`}>{render(f, i)}</td>
       ))}
@@ -84,21 +85,21 @@ export default async function ConfrontaPage({ searchParams }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <Header />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-        <nav className="text-xs text-zinc-500 mb-6">
-          <Link href="/" className="hover:text-zinc-300">Home</Link>
+        <nav className="text-xs mb-6" style={{ color: "var(--ink-4)" }} aria-label="breadcrumb">
+          <Link href="/" className="transition-colors hover:[color:var(--ink-2)]">Home</Link>
           <span className="mx-2">›</span>
-          <Link href="/catalogo" className="hover:text-zinc-300">Catalogo</Link>
+          <Link href="/catalogo" className="transition-colors hover:[color:var(--ink-2)]">Catalogo</Link>
           <span className="mx-2">›</span>
-          <span className="text-zinc-300">Confronto</span>
+          <span style={{ color: "var(--ink-2)" }}>Confronto</span>
         </nav>
 
-        <h1 className="text-2xl font-bold text-zinc-100 mb-8">Confronto filamenti</h1>
+        <h1 className="text-[length:var(--step-2)] font-bold mb-8">Confronto filamenti</h1>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--line)" }}>
           <table className="w-full border-collapse">
             {/* Intestazioni filamenti */}
             <thead>
-              <tr className="border-b border-zinc-800">
+              <tr className="border-b" style={{ borderColor: "var(--line-strong)" }}>
                 <th className="px-4 py-3 w-36" />
                 {filamenti.map((f) => {
                   const slug = slugifyFilamento(f.brand, f.tipo, f.variante, f.colore, f.peso_g, f.is_refill);
@@ -110,15 +111,15 @@ export default async function ConfrontaPage({ searchParams }: Props) {
                           <img src={f.link_immagine} alt="" className="w-20 h-20 object-contain mb-3 mx-auto" />
                         ) : (
                           <div
-                            className="w-16 h-16 rounded-full border-2 border-zinc-700 mb-3 mx-auto"
-                            style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
+                            className="w-16 h-16 rounded-full mb-3 mx-auto"
+                            style={{ backgroundColor: f.colore_hex ?? "var(--surface-3)", boxShadow: "inset 0 0 0 3px var(--surface-2), 0 0 0 1.5px var(--line-strong)" }}
                           />
                         )}
-                        <p className="text-xs text-zinc-500">{f.brand}</p>
-                        <p className="text-sm font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors leading-snug">
+                        <p className="text-xs" style={{ color: "var(--ink-4)" }}>{f.brand}</p>
+                        <p className="text-sm font-semibold transition-colors group-hover:[color:var(--accent)] leading-snug" style={{ color: "var(--ink-1)" }}>
                           {f.tipo} {f.variante} {f.colore ?? ""}
                         </p>
-                        <p className="text-xs text-zinc-500 mt-0.5">{f.peso_g}g · ⌀{f.diametro_mm}mm</p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>{f.peso_g}g · ⌀{f.diametro_mm}mm</p>
                       </Link>
                     </th>
                   );
@@ -128,14 +129,14 @@ export default async function ConfrontaPage({ searchParams }: Props) {
 
             <tbody>
               {/* Prezzi */}
-              <tr className="bg-zinc-900/50 border-b border-zinc-800">
-                <td className="px-4 py-2 text-xs text-zinc-600 uppercase tracking-wider" colSpan={filamenti.length + 1}>
+              <tr className="border-b" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "var(--ink-3)" }} colSpan={filamenti.length + 1}>
                   Prezzi migliori
                 </td>
               </tr>
               <Row label="Prezzo min" render={(_, i) => {
                 const best = prezziPerFilamento[i].find(p => p.disponibile);
-                return best ? <span className="font-bold text-emerald-400">€ {Number(best.prezzo_finale).toFixed(2)}</span> : <span className="text-zinc-600">N/D</span>;
+                return best ? <span className="font-bold" style={{ color: "var(--good)" }}>€ {Number(best.prezzo_finale).toFixed(2)}</span> : <span style={{ color: "var(--ink-4)" }}>N/D</span>;
               }} />
               <Row label="€/kg" render={(_, i) => {
                 const best = prezziPerFilamento[i].find(p => p.disponibile && p.prezzo_per_kg);
@@ -147,12 +148,12 @@ export default async function ConfrontaPage({ searchParams }: Props) {
               }} />
 
               {/* Specifiche */}
-              <tr className="bg-zinc-900/50 border-b border-zinc-800">
-                <td className="px-4 py-2 text-xs text-zinc-600 uppercase tracking-wider" colSpan={filamenti.length + 1}>
+              <tr className="border-b" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "var(--ink-3)" }} colSpan={filamenti.length + 1}>
                   Specifiche
                 </td>
               </tr>
-              <Row label="Tipo" render={(f) => <span className="text-emerald-400 font-mono text-xs">{f.tipo}</span>} />
+              <Row label="Tipo" render={(f) => <span className="font-mono text-xs px-2 py-0.5 rounded-full border" style={tipoBadgeStyle(f.tipo)}>{f.tipo}</span>} />
               <Row label="Variante" render={(f) => <Val v={f.variante} />} />
               <Row label="Peso" render={(f) => <Val v={`${f.peso_g} g`} />} />
               <Row label="Diametro" render={(f) => <Val v={`${f.diametro_mm} mm`} />} />
@@ -163,8 +164,8 @@ export default async function ConfrontaPage({ searchParams }: Props) {
               )}
 
               {/* Proprietà tecniche */}
-              <tr className="bg-zinc-900/50 border-b border-zinc-800">
-                <td className="px-4 py-2 text-xs text-zinc-600 uppercase tracking-wider" colSpan={filamenti.length + 1}>
+              <tr className="border-b" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "var(--ink-3)" }} colSpan={filamenti.length + 1}>
                   Proprietà tecniche
                 </td>
               </tr>
@@ -187,8 +188,8 @@ export default async function ConfrontaPage({ searchParams }: Props) {
               <Row label="Food safe"    render={(f) => <BoolVal v={f.food_safe} />} />
 
               {/* Storico prezzi */}
-              <tr className="bg-zinc-900/50 border-b border-zinc-800">
-                <td className="px-4 py-2 text-xs text-zinc-600 uppercase tracking-wider" colSpan={filamenti.length + 1}>
+              <tr className="border-b" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "var(--ink-3)" }} colSpan={filamenti.length + 1}>
                   Storico prezzi
                 </td>
               </tr>
@@ -204,7 +205,7 @@ export default async function ConfrontaPage({ searchParams }: Props) {
                       {storico.length > 0 ? (
                         <PriceChart data={storico} height={120} />
                       ) : (
-                        <span className="text-zinc-600 text-xs">Nessun dato</span>
+                        <span className="text-xs" style={{ color: "var(--ink-4)" }}>Nessun dato</span>
                       )}
                     </td>
                   );
@@ -212,8 +213,8 @@ export default async function ConfrontaPage({ searchParams }: Props) {
               </tr>
 
               {/* Link shop */}
-              <tr className="bg-zinc-900/50 border-b border-zinc-800">
-                <td className="px-4 py-2 text-xs text-zinc-600 uppercase tracking-wider" colSpan={filamenti.length + 1}>
+              <tr className="border-b" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
+                <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "var(--ink-3)" }} colSpan={filamenti.length + 1}>
                   Acquista
                 </td>
               </tr>
@@ -231,18 +232,20 @@ export default async function ConfrontaPage({ searchParams }: Props) {
                             href={p.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-between bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 rounded-lg px-3 py-2 transition-colors"
+                            className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors border"
+                            style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--line)" }}
                           >
-                            <span className="text-zinc-300 text-xs truncate mr-2">{p.shop}</span>
-                            <span className="text-emerald-400 font-semibold text-xs shrink-0">€ {Number(p.prezzo_finale).toFixed(2)}</span>
+                            <span className="text-xs truncate mr-2" style={{ color: "var(--ink-2)" }}>{p.shop}</span>
+                            <span className="font-semibold text-xs shrink-0" style={{ color: "var(--good)" }}>€ {Number(p.prezzo_finale).toFixed(2)}</span>
                           </a>
                         ))}
                         {available.length === 0 && (
-                          <span className="text-zinc-600 text-xs">Non disponibile</span>
+                          <span className="text-xs" style={{ color: "var(--ink-4)" }}>Non disponibile</span>
                         )}
                         <Link
                           href={`/filamento/${slug}`}
-                          className="block text-xs text-zinc-500 hover:text-zinc-300 transition-colors mt-1"
+                          className="block text-xs transition-colors mt-1"
+                          style={{ color: "var(--ink-4)" }}
                         >
                           Tutti i prezzi →
                         </Link>

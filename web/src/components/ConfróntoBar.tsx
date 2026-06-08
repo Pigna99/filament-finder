@@ -18,19 +18,31 @@ export default function ConfróntoBar() {
   if (ids.length < 2) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-zinc-900 border border-emerald-700/60 shadow-lg shadow-emerald-900/30 rounded-2xl px-5 py-3">
-      <span className="text-sm text-zinc-300">
-        <span className="text-emerald-400 font-semibold">{ids.length}</span> filamenti selezionati
+    <div
+      className="ff-rise fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 border rounded-2xl px-5 py-3 shadow-2xl"
+      style={{
+        backgroundColor: "var(--surface-2)",
+        borderColor: "var(--accent-line)",
+        boxShadow: "0 12px 40px oklch(0 0 0 / 0.5)",
+      }}
+      role="region"
+      aria-label="Filamenti selezionati per il confronto"
+    >
+      <span className="text-sm" style={{ color: "var(--ink-2)" }}>
+        <span className="font-semibold" style={{ color: "var(--accent)" }}>{ids.length}</span> filamenti selezionati
       </span>
       <button
         onClick={() => router.push(`/confronta?ids=${ids.join(",")}`)}
-        className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-xl transition-colors"
+        className="text-sm font-medium px-4 py-1.5 rounded-xl transition-colors"
+        style={{ backgroundColor: "var(--accent)", color: "var(--accent-ink)" }}
       >
         Confronta →
       </button>
       <button
         onClick={() => setCompareIds([])}
-        className="text-zinc-500 hover:text-zinc-300 text-sm px-2 transition-colors"
+        className="text-sm px-2 transition-colors"
+        style={{ color: "var(--ink-4)" }}
+        aria-label="Svuota selezione"
         title="Svuota selezione"
       >
         ✕

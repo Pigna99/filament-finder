@@ -14,13 +14,15 @@ interface Props {
   height?: number;
 }
 
+// Distinct, accessible series colours (OKLCH, ~0.78 L) — leads with the warm
+// accent so a single-shop chart matches the brand.
 const SHOP_COLORS = [
-  "#34d399", // emerald-400
-  "#60a5fa", // blue-400
-  "#f472b6", // pink-400
-  "#fb923c", // orange-400
-  "#a78bfa", // violet-400
-  "#facc15", // yellow-400
+  "oklch(0.78 0.16 64)",  // accent amber
+  "oklch(0.78 0.15 155)", // good green
+  "oklch(0.74 0.15 250)", // blue
+  "oklch(0.72 0.18 340)", // pink
+  "oklch(0.76 0.15 300)", // violet
+  "oklch(0.80 0.14 200)", // cyan
 ];
 
 export default function PriceChart({ data, height = 200 }: Props) {
@@ -52,7 +54,7 @@ export default function PriceChart({ data, height = 200 }: Props) {
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-zinc-600 text-sm">
+      <div className="flex items-center justify-center h-32 text-sm" style={{ color: "var(--ink-4)" }}>
         Nessun dato storico disponibile
       </div>
     );
@@ -102,8 +104,8 @@ export default function PriceChart({ data, height = 200 }: Props) {
         {/* Grid lines */}
         {yLabels.map(({ y, val }) => (
           <g key={val}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="#3f3f46" strokeDasharray="4" />
-            <text x={PAD.left - 6} y={y + 4} textAnchor="end" fontSize={10} fill="#71717a">
+            <line x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="var(--line)" strokeDasharray="4" />
+            <text x={PAD.left - 6} y={y + 4} textAnchor="end" fontSize={10} fill="var(--ink-4)">
               €{val.toFixed(2)}
             </text>
           </g>
@@ -111,7 +113,7 @@ export default function PriceChart({ data, height = 200 }: Props) {
 
         {/* X labels */}
         {xLabels.map(({ label, x }) => (
-          <text key={x} x={x} y={H - 8} textAnchor="middle" fontSize={10} fill="#71717a">
+          <text key={x} x={x} y={H - 8} textAnchor="middle" fontSize={10} fill="var(--ink-4)">
             {label}
           </text>
         ))}
@@ -155,7 +157,7 @@ export default function PriceChart({ data, height = 200 }: Props) {
       {shops.length > 1 && (
         <div className="flex flex-wrap gap-3 mt-2">
           {lines.map(({ shop, color }) => (
-            <span key={shop.id} className="flex items-center gap-1.5 text-xs text-zinc-400">
+            <span key={shop.id} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--ink-3)" }}>
               <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: color }} />
               {shop.nome}
             </span>

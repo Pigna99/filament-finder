@@ -13,29 +13,12 @@ import {
 } from "@tanstack/react-table";
 import { FilamentoRow } from "@/lib/filamenti";
 import { slugifyFilamento } from "@/lib/slugify";
+import { tipoBadgeStyle, difficoltaColor, DIFFICOLTA_LABEL } from "@/lib/tipo-style";
 import ConfróntoButton from "./ConfróntoButton";
 
 interface Props {
   filamenti: FilamentoRow[];
 }
-
-const TYPE_BADGE: Record<string, string> = {
-  "PLA":     "bg-emerald-950/80 text-emerald-400 border border-emerald-800/40",
-  "PLA-CF":  "bg-teal-950/80 text-teal-300 border border-teal-700/40",
-  "PETG":    "bg-blue-950/80 text-blue-400 border border-blue-800/40",
-  "PETG-CF": "bg-blue-950/80 text-blue-300 border border-blue-700/40",
-  "ABS":     "bg-orange-950/80 text-orange-400 border border-orange-800/40",
-  "ASA":     "bg-amber-950/80 text-amber-400 border border-amber-800/40",
-  "TPU":     "bg-purple-950/80 text-purple-400 border border-purple-800/40",
-  "NYLON":   "bg-cyan-950/80 text-cyan-400 border border-cyan-800/40",
-  "PA-CF":   "bg-cyan-950/80 text-cyan-300 border border-cyan-700/40",
-  "PC":      "bg-red-950/80 text-red-400 border border-red-800/40",
-  "HIPS":    "bg-zinc-800/80 text-zinc-300 border border-zinc-700/40",
-  "PVA":     "bg-pink-950/80 text-pink-400 border border-pink-800/40",
-};
-
-const DIFF_COLOR = ["", "text-emerald-500", "text-emerald-400", "text-amber-400", "text-orange-400", "text-red-400"];
-const DIFF_LABEL = ["", "●", "●", "●", "●", "●"];
 
 const col = createColumnHelper<FilamentoRow>();
 const PAGE_SIZE = 25;
@@ -62,37 +45,37 @@ export default function FilamentoTable({ filamenti }: Props) {
               <div className="shrink-0">
                 {f.link_immagine ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={f.link_immagine} alt="" className="w-9 h-9 object-contain rounded bg-zinc-800 p-0.5" loading="lazy" />
+                  <img src={f.link_immagine} alt="" className="w-9 h-9 object-contain rounded p-0.5" style={{ backgroundColor: "var(--surface-2)" }} loading="lazy" />
                 ) : (
                   <div
-                    className="w-9 h-9 rounded-full border-2 border-zinc-700 flex items-center justify-center"
-                    style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}
+                    className="w-9 h-9 rounded-full grid place-items-center"
+                    style={{ backgroundColor: f.colore_hex ?? "var(--surface-3)", boxShadow: "inset 0 0 0 2px var(--surface-1)" }}
                   >
-                    <div className="w-3 h-3 rounded-full bg-zinc-900/70" />
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--surface-1)" }} />
                   </div>
                 )}
               </div>
               {/* Info */}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                  <span className={`text-xs font-mono px-1.5 py-0 rounded-full leading-5 ${TYPE_BADGE[f.tipo] ?? "bg-zinc-800/80 text-zinc-400 border border-zinc-700/40"}`}>
+                  <span className="text-xs font-mono px-1.5 py-0 rounded-full leading-5 border" style={tipoBadgeStyle(f.tipo)}>
                     {f.tipo}
                   </span>
                   {f.is_refill && (
-                    <span className="text-xs bg-amber-900/60 text-amber-300 border border-amber-700/40 px-1.5 py-0 rounded-full leading-5">
+                    <span className="text-xs px-1.5 py-0 rounded-full leading-5 border" style={{ color: "oklch(0.85 0.1 75)", backgroundColor: "oklch(0.3 0.05 75 / 0.6)", borderColor: "oklch(0.45 0.08 75 / 0.4)" }}>
                       Refill
                     </span>
                   )}
                 </div>
-                <p className="text-zinc-100 font-medium text-sm leading-tight group-hover/cell:text-emerald-400 transition-colors truncate">
-                  {f.brand} <span className="text-zinc-400 font-normal">{f.variante}</span>
+                <p className="font-medium text-sm leading-tight transition-colors group-hover/cell:[color:var(--accent)] truncate" style={{ color: "var(--ink-1)" }}>
+                  {f.brand} <span className="font-normal" style={{ color: "var(--ink-3)" }}>{f.variante}</span>
                 </p>
                 {f.colore && (
                   <p className="flex items-center gap-1 mt-0.5">
                     {f.colore_hex && (
-                      <span className="w-2.5 h-2.5 rounded-full border border-zinc-600 shrink-0" style={{ backgroundColor: f.colore_hex }} />
+                      <span className="w-2.5 h-2.5 rounded-full border shrink-0" style={{ backgroundColor: f.colore_hex, borderColor: "var(--line-strong)" }} />
                     )}
-                    <span className="text-zinc-500 text-xs truncate">{f.colore}</span>
+                    <span className="text-xs truncate" style={{ color: "var(--ink-4)" }}>{f.colore}</span>
                   </p>
                 )}
               </div>
@@ -106,7 +89,7 @@ export default function FilamentoTable({ filamenti }: Props) {
         header: "Peso",
         enableSorting: true,
         cell: ({ getValue }) => (
-          <span className="text-zinc-400 whitespace-nowrap text-xs">{getValue()}g</span>
+          <span className="whitespace-nowrap text-xs" style={{ color: "var(--ink-3)" }}>{getValue()}g</span>
         ),
       }),
 
@@ -125,10 +108,10 @@ export default function FilamentoTable({ filamenti }: Props) {
           const available = Number(f.num_shop) > 0;
           return (
             <div className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${available ? "bg-emerald-500" : "bg-zinc-700"}`} title={available ? "Disponibile" : "Non disponibile"} />
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: available ? "var(--good)" : "var(--line-strong)" }} title={available ? "Disponibile" : "Non disponibile"} />
               {v != null
-                ? <span className="text-zinc-100 font-semibold whitespace-nowrap">€ {Number(v).toFixed(2)}</span>
-                : <span className="text-zinc-600 text-xs">N/D</span>}
+                ? <span className="font-semibold whitespace-nowrap" style={{ color: "var(--ink-1)" }}>€ {Number(v).toFixed(2)}</span>
+                : <span className="text-xs" style={{ color: "var(--ink-4)" }}>N/D</span>}
             </div>
           );
         },
@@ -147,8 +130,8 @@ export default function FilamentoTable({ filamenti }: Props) {
         cell: ({ getValue }) => {
           const v = getValue();
           return v != null
-            ? <span className="text-emerald-400 font-bold whitespace-nowrap">€ {Number(v).toFixed(2)}</span>
-            : <span className="text-zinc-700">—</span>;
+            ? <span className="font-bold whitespace-nowrap" style={{ color: "var(--good)" }}>€ {Number(v).toFixed(2)}</span>
+            : <span style={{ color: "var(--ink-4)" }}>—</span>;
         },
       }),
 
@@ -162,12 +145,12 @@ export default function FilamentoTable({ filamenti }: Props) {
           const diff = f.difficolta_stampa;
           return (
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${n > 0 ? "text-zinc-400" : "text-zinc-700"}`}>
+              <span className="text-xs" style={{ color: n > 0 ? "var(--ink-3)" : "var(--ink-4)" }}>
                 {n > 0 ? `${n} shop` : "—"}
               </span>
               {diff ? (
-                <span className={`text-xs ${DIFF_COLOR[diff]}`} title={["", "Molto facile", "Facile", "Medio", "Difficile", "Molto difficile"][diff]}>
-                  {DIFF_LABEL[diff].repeat(diff)}
+                <span className="text-xs tracking-tight" style={{ color: difficoltaColor(diff) }} title={DIFFICOLTA_LABEL[diff]}>
+                  {"●".repeat(diff)}
                 </span>
               ) : null}
             </div>
@@ -188,7 +171,8 @@ export default function FilamentoTable({ filamenti }: Props) {
               </div>
               <Link
                 href={`/filamento/${slug}`}
-                className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors whitespace-nowrap px-2 py-1 rounded hover:bg-zinc-800"
+                className="text-xs transition-colors whitespace-nowrap px-2 py-1 rounded hover:[color:var(--accent)] hover:[background-color:var(--surface-2)]"
+                style={{ color: "var(--ink-4)" }}
               >
                 Dettaglio →
               </Link>
@@ -229,9 +213,11 @@ export default function FilamentoTable({ filamenti }: Props) {
   const rows = table.getRowModel().rows;
 
   function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-    if (!sorted) return <span className="text-zinc-700 ml-1">↕</span>;
-    return <span className="text-emerald-400 ml-1">{sorted === "asc" ? "↑" : "↓"}</span>;
+    if (!sorted) return <span className="ml-1" style={{ color: "var(--ink-4)" }}>↕</span>;
+    return <span className="ml-1" style={{ color: "var(--accent)" }}>{sorted === "asc" ? "↑" : "↓"}</span>;
   }
+
+  const pageBtn = "px-3 py-1.5 rounded-lg text-sm border disabled:opacity-30 disabled:cursor-not-allowed transition-colors";
 
   return (
     <>
@@ -244,32 +230,33 @@ export default function FilamentoTable({ filamenti }: Props) {
             <div key={f.id} className="relative">
               <Link
                 href={`/filamento/${slug}`}
-                className="flex items-center gap-3 p-3 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-emerald-500/40 transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border transition-colors"
+                style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}
               >
                 {f.link_immagine ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={f.link_immagine} alt="" className="w-10 h-10 object-contain rounded bg-zinc-800 p-0.5 shrink-0" loading="lazy" />
+                  <img src={f.link_immagine} alt="" className="w-10 h-10 object-contain rounded p-0.5 shrink-0" style={{ backgroundColor: "var(--surface-2)" }} loading="lazy" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full border-2 border-zinc-700 shrink-0 flex items-center justify-center" style={{ backgroundColor: f.colore_hex ?? "#3f3f46" }}>
-                    <div className="w-3 h-3 rounded-full bg-zinc-900/70" />
+                  <div className="w-10 h-10 rounded-full shrink-0 grid place-items-center" style={{ backgroundColor: f.colore_hex ?? "var(--surface-3)", boxShadow: "inset 0 0 0 2px var(--surface-1)" }}>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--surface-1)" }} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                    <span className={`text-xs font-mono px-1.5 py-0 rounded-full leading-5 ${TYPE_BADGE[f.tipo] ?? "bg-zinc-800/80 text-zinc-400 border border-zinc-700/40"}`}>{f.tipo}</span>
-                    {f.is_refill && <span className="text-xs bg-amber-900/60 text-amber-300 border border-amber-700/40 px-1.5 py-0 rounded-full leading-5">Refill</span>}
-                    <span className="text-zinc-500 text-xs">{f.brand} {f.variante}</span>
+                    <span className="text-xs font-mono px-1.5 py-0 rounded-full leading-5 border" style={tipoBadgeStyle(f.tipo)}>{f.tipo}</span>
+                    {f.is_refill && <span className="text-xs px-1.5 py-0 rounded-full leading-5 border" style={{ color: "oklch(0.85 0.1 75)", backgroundColor: "oklch(0.3 0.05 75 / 0.6)", borderColor: "oklch(0.45 0.08 75 / 0.4)" }}>Refill</span>}
+                    <span className="text-xs" style={{ color: "var(--ink-4)" }}>{f.brand} {f.variante}</span>
                   </p>
-                  <p className="text-sm text-zinc-100 truncate">{f.colore ?? "—"}</p>
-                  <p className="text-xs text-zinc-600">{f.peso_g}g · ⌀{f.diametro_mm}mm</p>
+                  <p className="text-sm truncate" style={{ color: "var(--ink-1)" }}>{f.colore ?? "—"}</p>
+                  <p className="text-xs" style={{ color: "var(--ink-4)" }}>{f.peso_g}g · ⌀{f.diametro_mm}mm</p>
                 </div>
                 <div className="text-right shrink-0 space-y-0.5">
                   <div className="flex items-center justify-end gap-1">
-                    <span className={`w-1.5 h-1.5 rounded-full ${available ? "bg-emerald-500" : "bg-zinc-700"}`} />
-                    {f.prezzo_min != null && <p className="text-sm font-bold text-zinc-100">€ {Number(f.prezzo_min).toFixed(2)}</p>}
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: available ? "var(--good)" : "var(--line-strong)" }} />
+                    {f.prezzo_min != null && <p className="text-sm font-bold" style={{ color: "var(--ink-1)" }}>€ {Number(f.prezzo_min).toFixed(2)}</p>}
                   </div>
-                  {f.prezzo_per_kg_min != null && <p className="text-xs text-emerald-400">€ {Number(f.prezzo_per_kg_min).toFixed(2)}/kg</p>}
-                  {!f.prezzo_min && <p className="text-xs text-zinc-600">N/D</p>}
+                  {f.prezzo_per_kg_min != null && <p className="text-xs" style={{ color: "var(--good)" }}>€ {Number(f.prezzo_per_kg_min).toFixed(2)}/kg</p>}
+                  {!f.prezzo_min && <p className="text-xs" style={{ color: "var(--ink-4)" }}>N/D</p>}
                 </div>
               </Link>
               <ConfróntoButton id={f.id} />
@@ -280,19 +267,19 @@ export default function FilamentoTable({ filamenti }: Props) {
 
       {/* Desktop: tabella */}
       <div className="hidden sm:block">
-        <div className="overflow-x-auto rounded-xl border border-zinc-800">
+        <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--line)" }}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-zinc-900/80 text-left border-b border-zinc-800">
+              <tr className="text-left border-b" style={{ backgroundColor: "var(--surface-1)", borderColor: "var(--line)" }}>
                 {table.getFlatHeaders().map((header) => {
                   const canSort = header.column.getCanSort();
                   const sorted  = header.column.getIsSorted();
-                  const isEkg   = header.column.id === "prezzo_per_kg_min";
                   return (
                     <th
                       key={header.id}
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                      className={`px-4 py-3 text-xs font-medium uppercase tracking-wider select-none whitespace-nowrap ${canSort ? "cursor-pointer hover:text-zinc-300 transition-colors" : ""} ${sorted ? "text-emerald-400" : "text-zinc-500"} ${isEkg && !sorted ? "text-emerald-400/60" : ""}`}
+                      className={`px-4 py-3 text-xs font-semibold select-none whitespace-nowrap ${canSort ? "cursor-pointer transition-colors" : ""}`}
+                      style={{ color: sorted ? "var(--accent)" : "var(--ink-3)" }}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {canSort && <SortIcon sorted={sorted} />}
@@ -301,9 +288,9 @@ export default function FilamentoTable({ filamenti }: Props) {
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/50">
+            <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-zinc-800/20 transition-colors group">
+                <tr key={row.id} className="border-t transition-colors group hover:[background-color:color-mix(in_oklab,var(--surface-2)_40%,transparent)]" style={{ borderColor: "var(--line)" }}>
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -313,7 +300,7 @@ export default function FilamentoTable({ filamenti }: Props) {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length} className="px-4 py-12 text-center text-zinc-600 text-sm">
+                  <td colSpan={columns.length} className="px-4 py-12 text-center text-sm" style={{ color: "var(--ink-4)" }}>
                     Nessun filamento trovato.
                   </td>
                 </tr>
@@ -326,14 +313,15 @@ export default function FilamentoTable({ filamenti }: Props) {
       {/* Paginazione */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs" style={{ color: "var(--ink-4)" }}>
             {pageIndex * PAGE_SIZE + 1}–{Math.min((pageIndex + 1) * PAGE_SIZE, data.length)} di {data.length}{sortingByPrice && data.length < filamenti.length ? ` (${filamenti.length - data.length} senza prezzo esclusi)` : ""}
           </p>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="px-3 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className={pageBtn}
+              style={{ backgroundColor: "var(--surface-2)", color: "var(--ink-2)", borderColor: "var(--line)" }}
             >
               ← Prec
             </button>
@@ -347,14 +335,16 @@ export default function FilamentoTable({ filamenti }: Props) {
                 }, [])
                 .map((p, i) =>
                   p === "…" ? (
-                    <span key={`sep-${i}`} className="text-zinc-600 px-1">…</span>
+                    <span key={`sep-${i}`} className="px-1" style={{ color: "var(--ink-4)" }}>…</span>
                   ) : (
                     <button
                       key={p}
                       onClick={() => table.setPageIndex(p as number)}
-                      className={`w-8 h-8 rounded-lg text-sm transition-colors ${
-                        currentPage === p ? "bg-emerald-600 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                      }`}
+                      aria-current={currentPage === p ? "page" : undefined}
+                      className="w-8 h-8 rounded-lg text-sm transition-colors border"
+                      style={currentPage === p
+                        ? { backgroundColor: "var(--accent)", color: "var(--accent-ink)", borderColor: "var(--accent)" }
+                        : { backgroundColor: "var(--surface-2)", color: "var(--ink-3)", borderColor: "var(--line)" }}
                     >
                       {(p as number) + 1}
                     </button>
@@ -364,7 +354,8 @@ export default function FilamentoTable({ filamenti }: Props) {
             <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="px-3 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className={pageBtn}
+              style={{ backgroundColor: "var(--surface-2)", color: "var(--ink-2)", borderColor: "var(--line)" }}
             >
               Succ →
             </button>
